@@ -98,6 +98,7 @@ export function describeCard(draw) {
     numeral: card.numeral,
     glyph: card.glyph,
     arcana: card.arcana,
+    image: `/tarot/${draw.id}.jpg`,
     orientation: draw.reversed ? '역방향' : '정방향',
     display: `${card.name} (${draw.reversed ? '역방향' : '정방향'})`,
   }

@@ -39,6 +39,12 @@ export async function onRequestPost(context) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
+  // 타로는 수요가 몰릴 수 있어 IP당 사용량을 제한합니다.
+  if (payload?.kind === 'tarot') {
+    const blocked = await checkTarotLimit(request, env, context)
+    if (blocked) return jsonError(429, blocked)
+  }
+
   const encoder = new TextEncoder()
 
   const stream = new ReadableStream({
@@ -84,6 +90,77 @@ export async function onRequestPost(context) {
       'X-Content-Type-Options': 'nosniff',
     },
   })
+}
+
+/* ── 타로 사용량 제한: 4시간 안에 3회까지 ── */
+const TAROT_LIMIT = 3
+const TAROT_WINDOW_MS = 4 * 60 * 60 * 1000
+
+function limitMessage(resetAt) {
+  const leftMin = Math.max(1, Math.ceil((resetAt - Date.now()) / 60000))
+  const h = Math.floor(leftMin / 60)
+  const m = leftMin % 60
+  const left = h > 0 ? `${h}시간 ${m}분` : `${m}분`
+  return `제 API 사용량이 녹고 있어요… 타로는 4시간에 ${TAROT_LIMIT}번까지만 볼 수 있어요. ${left} 뒤에 다시 찾아와 주세요.`
+}
+
+/**
+ * IP별 타로 횟수를 셉니다.
+ * KV(TAROT_LIMIT_KV)가 연결돼 있으면 KV를, 없으면 Cache API를 씁니다.
+ * @returns {Promise<string|null>} 막아야 하면 안내 문구, 통과면 null
+ */
+async function checkTarotLimit(request, env, context) {
+  const ip =
+    request.headers.get('CF-Connecting-IP') ||
+    request.headers.get('x-forwarded-for') ||
+    'unknown'
+  const now = Date.now()
+
+  // 1) KV가 있으면 KV 사용 (정확도 높음)
+  if (env.TAROT_LIMIT_KV) {
+    const key = `tarot:${ip}`
+    const raw = await env.TAROT_LIMIT_KV.get(key)
+    const state = raw ? JSON.parse(raw) : null
+    const fresh = state && state.resetAt > now ? state : { count: 0, resetAt: now + TAROT_WINDOW_MS }
+
+    if (fresh.count >= TAROT_LIMIT) return limitMessage(fresh.resetAt)
+
+    fresh.count += 1
+    await env.TAROT_LIMIT_KV.put(key, JSON.stringify(fresh), {
+      expirationTtl: Math.max(60, Math.ceil((fresh.resetAt - now) / 1000)),
+    })
+    return null
+  }
+
+  // 2) KV가 없으면 Cache API로 대체 (설정 없이 바로 동작)
+  try {
+    const cache = caches.default
+    const key = new Request(
+      `https://tarot-limit.internal/${encodeURIComponent(ip)}`,
+      { method: 'GET' },
+    )
+    const hit = await cache.match(key)
+    const state = hit ? await hit.json().catch(() => null) : null
+    const fresh =
+      state && state.resetAt > now ? state : { count: 0, resetAt: now + TAROT_WINDOW_MS }
+
+    if (fresh.count >= TAROT_LIMIT) return limitMessage(fresh.resetAt)
+
+    fresh.count += 1
+    const ttl = Math.max(60, Math.ceil((fresh.resetAt - now) / 1000))
+    const put = cache.put(
+      key,
+      new Response(JSON.stringify(fresh), {
+        headers: { 'Cache-Control': `max-age=${ttl}`, 'Content-Type': 'application/json' },
+      }),
+    )
+    if (context?.waitUntil) context.waitUntil(put)
+    else await put
+    return null
+  } catch {
+    // 제한 장치가 실패해도 서비스는 계속 되게 둡니다.
+    return null
+  }
 }
 
 async function collectClaudeText({ system, user, apiKey, onChunk }) {

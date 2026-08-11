@@ -59,7 +59,7 @@ export async function unlockAccess(password) {
  * 서버는 타임아웃 방지를 위해 스트림으로 보내지만,
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
-async function requestReading({ system, user, failMessage }) {
+async function requestReading({ system, user, failMessage, kind }) {
   const password = getStoredAccessPassword()
   if (!password) {
     throw new Error('비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.')
@@ -68,7 +68,7 @@ async function requestReading({ system, user, failMessage }) {
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password, system, user }),
+    body: JSON.stringify({ password, system, user, kind }),
   })
 
   const raw = await response.text()
@@ -140,6 +140,7 @@ export async function analyzeTarot(draws, info) {
   return requestReading({
     system: TAROT_SYSTEM_INSTRUCTION,
     user: buildTarotUserPrompt(draws, info),
+    kind: 'tarot',
     failMessage: '타로 해석 요청에 실패했습니다.',
   })
 }

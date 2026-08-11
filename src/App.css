@@ -764,18 +764,12 @@ legend {
   transform: rotate(180deg);
 }
 
-.tarot-numeral {
-  position: absolute;
-  top: 1px;
-  font-size: 0.46rem;
-  letter-spacing: 0.04em;
-  color: #8a6a1f;
-}
-
-.tarot-glyph {
-  font-size: 1.15rem;
-  line-height: 1;
-  color: #6d4f14;
+.tarot-art img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  border-radius: 2px;
 }
 
 .tarot-name {
@@ -973,21 +967,41 @@ legend {
 
 .drawn-item {
   display: flex;
-  justify-content: space-between;
-  align-items: baseline;
-  gap: 0.6rem;
+  align-items: center;
+  gap: 0.65rem;
   font-size: 0.86rem;
   color: #f0e3ff;
+}
+
+.drawn-art {
+  width: 38px;
+  height: 62px;
+  flex: none;
+  object-fit: cover;
+  border-radius: 3px;
+  border: 1px solid rgba(200, 170, 100, 0.5);
+  box-shadow: 0 2px 6px rgba(8, 2, 20, 0.4);
+}
+
+.drawn-art.is-rev {
+  transform: rotate(180deg);
+}
+
+.drawn-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
 }
 
 .drawn-pos {
   color: rgba(240, 227, 255, 0.62);
   white-space: nowrap;
+  font-size: 0.76rem;
 }
 
 .drawn-name {
   font-weight: 600;
-  text-align: right;
 }
 
 .drawn-name em {

@@ -154,8 +154,7 @@ export default function TarotPage({ onBack }) {
                           <span
                             className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
                           >
-                            <span className="tarot-numeral">{card.numeral}</span>
-                            <span className="tarot-glyph">{card.glyph}</span>
+                            <img src={card.image} alt="" />
                           </span>
                           <span className="tarot-name">{card.name}</span>
                           <span
@@ -200,12 +199,19 @@ export default function TarotPage({ onBack }) {
                 const card = describeCard(draw)
                 return (
                   <li key={draw.id} className="drawn-item">
-                    <span className="drawn-pos">{SPREAD[i].label}</span>
-                    <span className="drawn-name">
-                      {card.name}
-                      <em className={card.reversed ? 'is-rev' : ''}>
-                        {card.orientation}
-                      </em>
+                    <img
+                      className={`drawn-art${card.reversed ? ' is-rev' : ''}`}
+                      src={card.image}
+                      alt=""
+                    />
+                    <span className="drawn-text">
+                      <span className="drawn-pos">{SPREAD[i].label}</span>
+                      <span className="drawn-name">
+                        {card.name}
+                        <em className={card.reversed ? 'is-rev' : ''}>
+                          {card.orientation}
+                        </em>
+                      </span>
                     </span>
                   </li>
                 )
