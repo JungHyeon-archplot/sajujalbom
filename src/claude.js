@@ -2,21 +2,14 @@ import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from './sajuPrompt.js'
 
 const ACCESS_STORAGE_KEY = 'saju_access_password'
 
-function isNetlifyHost() {
-  return (
-    typeof window !== 'undefined' &&
-    /netlify\.app$/i.test(window.location.hostname)
-  )
-}
-
+// /api/* 경로는 Cloudflare Pages(functions/api/*), Netlify(리다이렉트),
+// 로컬 Vite(미들웨어) 모두에서 동작합니다.
 function getUnlockUrl() {
-  return isNetlifyHost() ? '/.netlify/functions/unlock' : '/api/unlock'
+  return '/api/unlock'
 }
 
 function getAnalyzeUrl() {
-  return isNetlifyHost()
-    ? '/.netlify/functions/analyze-saju'
-    : '/api/analyze-saju'
+  return '/api/analyze-saju'
 }
 
 export function getStoredAccessPassword() {
