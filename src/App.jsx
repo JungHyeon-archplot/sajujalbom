@@ -1,6 +1,10 @@
 import { useMemo, useState } from 'react'
 import dragonBg from './assets/dragon-bg.png'
-import { analyzeSaju } from './claude.js'
+import {
+  analyzeSaju,
+  getStoredAccessPassword,
+  unlockAccess,
+} from './claude.js'
 import './App.css'
 
 const CURRENT_YEAR = new Date().getFullYear()
@@ -8,6 +12,7 @@ const YEARS = Array.from({ length: CURRENT_YEAR - 1920 + 1 }, (_, i) => CURRENT_
 const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
 const HOURS = Array.from({ length: 24 }, (_, i) => i)
 const MINUTES = Array.from({ length: 60 }, (_, i) => i)
+const ACCESS_HINT = '동방 비밀번호'
 
 function daysInMonth(year, month) {
   if (!year || !month) return 31
@@ -39,6 +44,11 @@ function App() {
   const [gender, setGender] = useState('') // 'male' | 'female'
   const [calendarType, setCalendarType] = useState('solar') // 'solar' | 'lunar'
 
+  const [accessPassword, setAccessPassword] = useState('')
+  const [unlocked, setUnlocked] = useState(() => Boolean(getStoredAccessPassword()))
+  const [unlocking, setUnlocking] = useState(false)
+  const [showHint, setShowHint] = useState(false)
+
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
@@ -53,7 +63,32 @@ function App() {
     if (day && Number(day) > max) setDay(String(max))
   }
 
+  async function handleUnlock() {
+    if (!accessPassword.trim()) {
+      setError('비밀번호를 입력해 주세요.')
+      return
+    }
+
+    setUnlocking(true)
+    setError('')
+    try {
+      await unlockAccess(accessPassword.trim())
+      setUnlocked(true)
+      setAccessPassword('')
+    } catch (err) {
+      setUnlocked(false)
+      setError(err?.message || '비밀번호가 올바르지 않습니다.')
+    } finally {
+      setUnlocking(false)
+    }
+  }
+
   async function handleAnalyze() {
+    if (!unlocked) {
+      setError('비밀번호를 먼저 입력해 잠금을 해제해 주세요.')
+      return
+    }
+
     if (!name.trim() || !year || !month || !day || hour === '' || minute === '' || !gender) {
       setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
       return
@@ -77,7 +112,11 @@ function App() {
       setResult(stripMarkdown(text))
     } catch (err) {
       console.error(err)
-      setError(err?.message || '사주 해석 중 오류가 발생했습니다.')
+      const message = err?.message || '사주 해석 중 오류가 발생했습니다.'
+      setError(message)
+      if (message.includes('비밀번호')) {
+        setUnlocked(false)
+      }
     } finally {
       setLoading(false)
     }
@@ -243,14 +282,49 @@ function App() {
           </label>
         </fieldset>
 
-        <button
-          type="button"
-          className="analyze-btn"
-          onClick={handleAnalyze}
-          disabled={loading}
-        >
-          {loading ? '해석 중...' : '사주 해석하기'}
-        </button>
+        {!unlocked ? (
+          <div className="access-lock">
+            <label htmlFor="accessPassword">
+              비밀번호
+              <input
+                id="accessPassword"
+                type="password"
+                value={accessPassword}
+                onChange={(e) => setAccessPassword(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleUnlock()
+                }}
+                placeholder="비밀번호를 입력하세요"
+                autoComplete="current-password"
+              />
+            </label>
+            <button
+              type="button"
+              className="analyze-btn"
+              onClick={handleUnlock}
+              disabled={unlocking}
+            >
+              {unlocking ? '확인 중...' : '잠금 해제'}
+            </button>
+            <button
+              type="button"
+              className="hint-toggle"
+              onClick={() => setShowHint((v) => !v)}
+            >
+              {showHint ? '힌트 숨기기' : '힌트 보기'}
+            </button>
+            {showHint && <p className="hint-text">{ACCESS_HINT}</p>}
+          </div>
+        ) : (
+          <button
+            type="button"
+            className="analyze-btn"
+            onClick={handleAnalyze}
+            disabled={loading}
+          >
+            {loading ? '해석 중...' : '사주 해석하기'}
+          </button>
+        )}
 
         {error && <p className="error">{error}</p>}
 

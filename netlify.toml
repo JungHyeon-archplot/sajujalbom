@@ -10,6 +10,11 @@
   timeout = 26
 
 [[redirects]]
+  from = "/api/unlock"
+  to = "/.netlify/functions/unlock"
+  status = 200
+
+[[redirects]]
   from = "/api/analyze-saju"
   to = "/.netlify/functions/analyze-saju"
   status = 200
