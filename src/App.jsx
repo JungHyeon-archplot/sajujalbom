@@ -1,121 +1,193 @@
 import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import heroImg from './assets/hero.png'
+import dragonBg from './assets/dragon-bg.png'
+import { analyzeSaju } from './gemini.js'
 import './App.css'
 
 function App() {
-  const [count, setCount] = useState(0)
+  // 각 입력값을 따로 상태로 관리합니다.
+  const [name, setName] = useState('')
+  const [birthDate, setBirthDate] = useState('') // 예: 1990-05-20
+  const [birthTime, setBirthTime] = useState('') // 예: 14:30
+  const [gender, setGender] = useState('') // 'male' | 'female'
+  const [calendarType, setCalendarType] = useState('solar') // 'solar'(양력) | 'lunar'(음력)
+
+  // Gemini 호출 상태
+  const [loading, setLoading] = useState(false)
+  const [result, setResult] = useState('')
+  const [error, setError] = useState('')
+
+  async function handleAnalyze() {
+    // 필수값 간단 검사
+    if (!name.trim() || !birthDate || !birthTime || !gender) {
+      setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
+      return
+    }
+
+    setLoading(true)
+    setError('')
+    setResult('')
+
+    try {
+      const text = await analyzeSaju({
+        name: name.trim(),
+        birthDate,
+        birthTime,
+        gender,
+        calendarType,
+      })
+      setResult(text)
+    } catch (err) {
+      console.error(err)
+      setError(err?.message || '사주 해석 중 오류가 발생했습니다.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>장정현의 미래는?</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
+    <div className="app">
+      {/* 용 이미지를 흐리게 배경으로 깔아 둡니다 */}
+      <div
+        className="app-bg"
+        style={{ backgroundImage: `url(${dragonBg})` }}
+        aria-hidden="true"
+      />
+
+      <div className="app-content">
+        <h1>정보입력</h1>
+
+        {/* 이름 */}
+        <label htmlFor="name">
+          이름
+          <input
+            id="name"
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="이름을 입력하세요"
+          />
+        </label>
+
+        {/* 생년월일: type="date"면 달력으로 고를 수 있습니다 */}
+        <label htmlFor="birthDate">
+          생년월일
+          <input
+            id="birthDate"
+            type="date"
+            value={birthDate}
+            onChange={(e) => setBirthDate(e.target.value)}
+          />
+        </label>
+
+        {/* 태어난 시간: type="time"이면 시:분 형식입니다 */}
+        <label htmlFor="birthTime">
+          태어난 시간
+          <input
+            id="birthTime"
+            type="time"
+            value={birthTime}
+            onChange={(e) => setBirthTime(e.target.value)}
+          />
+        </label>
+
+        {/*
+          성별: radio는 같은 name을 쓰면 하나만 선택됩니다.
+          checked={gender === 'male'} → 현재 상태가 male일 때만 체크됩니다.
+        */}
+        <fieldset>
+          <legend>성별</legend>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="gender"
+              value="male"
+              checked={gender === 'male'}
+              onChange={(e) => setGender(e.target.value)}
+            />
+            남성
+          </label>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="gender"
+              value="female"
+              checked={gender === 'female'}
+              onChange={(e) => setGender(e.target.value)}
+            />
+            여성
+          </label>
+        </fieldset>
+
+        {/* 양력 / 음력도 성별과 같은 radio 패턴입니다 */}
+        <fieldset>
+          <legend>양력 / 음력</legend>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="calendarType"
+              value="solar"
+              checked={calendarType === 'solar'}
+              onChange={(e) => setCalendarType(e.target.value)}
+            />
+            양력
+          </label>
+          <label className="radio-label">
+            <input
+              type="radio"
+              name="calendarType"
+              value="lunar"
+              checked={calendarType === 'lunar'}
+              onChange={(e) => setCalendarType(e.target.value)}
+            />
+            음력
+          </label>
+        </fieldset>
+
         <button
           type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
+          className="analyze-btn"
+          onClick={handleAnalyze}
+          disabled={loading}
         >
-          Count is {count}
+          {loading ? '해석 중...' : '사주 해석하기'}
         </button>
-      </section>
 
-      <div className="ticks"></div>
+        {error && <p className="error">{error}</p>}
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+        {loading && (
+          <div className="result skeleton" aria-busy="true" aria-live="polite">
+            <p className="skeleton-status">사주를 읽고 있습니다…</p>
+            <div className="skeleton-block">
+              <div className="skeleton-line title" />
+              <div className="skeleton-line short" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line medium" />
+            </div>
+            <div className="skeleton-block">
+              <div className="skeleton-line title" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line short" />
+              <div className="skeleton-line medium" />
+              <div className="skeleton-line" />
+            </div>
+            <div className="skeleton-block">
+              <div className="skeleton-line title" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line medium" />
+              <div className="skeleton-line short" />
+            </div>
+          </div>
+        )}
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+        {result && !loading && (
+          <div className="result">
+            <pre className="result-text">{result}</pre>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
