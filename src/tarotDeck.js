@@ -22,27 +22,44 @@ const RANKS = [
   '페이지', '나이트', '퀸', '킹',
 ]
 
+const ROMAN = [
+  '0', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X',
+  'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII', 'XIX', 'XX', 'XXI',
+]
+
+/** 슈트별 상징 기호 (카드 앞면 장식용) */
+const SUIT_GLYPH = {
+  wands: '⚚',
+  cups: '🜄',
+  swords: '⚔',
+  pentacles: '⬟',
+}
+
 /** 0~77 번호 → 카드 정보 */
 export const DECK = (() => {
   const cards = MAJORS.map((name, i) => ({
     id: i,
     name,
     arcana: 'major',
+    numeral: ROMAN[i],
+    glyph: '✦',
     label: `${name}(메이저 ${i})`,
   }))
 
   let id = MAJORS.length
   for (const suit of SUITS) {
-    for (const rank of RANKS) {
+    RANKS.forEach((rank, r) => {
       cards.push({
         id,
         name: `${suit.label} ${rank}`,
         arcana: 'minor',
         suit: suit.key,
+        numeral: r < 10 ? String(r + 1) : rank,
+        glyph: SUIT_GLYPH[suit.key],
         label: `${suit.label} ${rank}`,
       })
       id += 1
-    }
+    })
   }
   return cards
 })()
@@ -78,6 +95,9 @@ export function describeCard(draw) {
     ...draw,
     name: card.name,
     label: card.label,
+    numeral: card.numeral,
+    glyph: card.glyph,
+    arcana: card.arcana,
     orientation: draw.reversed ? '역방향' : '정방향',
     display: `${card.name} (${draw.reversed ? '역방향' : '정방향'})`,
   }

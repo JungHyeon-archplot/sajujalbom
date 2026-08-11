@@ -22,7 +22,9 @@ export default function TarotPage({ onBack }) {
   // 화면에는 여러 장 중 고르는 것으로 보이지만, 실제로는 미리 뽑아 둔 번호를 순서대로 배정합니다.
   const [drawn, setDrawn] = useState(() => drawCardIds(SPREAD.length))
   const [picked, setPicked] = useState([]) // 선택한 슬롯 index 순서
-  const [phase, setPhase] = useState('pick') // 'pick' | 'reading' | 'done'
+  const [phase, setPhase] = useState('intro') // 'intro' | 'pick' | 'reading' | 'done'
+  const [name, setName] = useState('')
+  const [concern, setConcern] = useState('')
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
 
@@ -39,12 +41,24 @@ export default function TarotPage({ onBack }) {
     return { ...describeCard(drawn[order]), position: SPREAD[order] }
   }
 
+  function handleStart() {
+    if (!name.trim()) {
+      setError('이름을 입력해 주세요.')
+      return
+    }
+    setError('')
+    setPhase('pick')
+  }
+
   async function handleRead() {
     setPhase('reading')
     setError('')
     setResult('')
     try {
-      const text = await analyzeTarot(drawn)
+      const text = await analyzeTarot(drawn, {
+        name: name.trim(),
+        concern: concern.trim(),
+      })
       setResult(stripMarkdown(text))
       setPhase('done')
     } catch (err) {
@@ -74,15 +88,51 @@ export default function TarotPage({ onBack }) {
         <header className="tarot-head">
           <h1>타로</h1>
           <p>
-            {phase === 'pick' && !done
-              ? `마음이 가는 카드를 ${SPREAD.length - picked.length}장 더 고르세요`
-              : phase === 'reading'
-                ? '카드를 읽고 있습니다…'
-                : '뽑힌 카드입니다'}
+            {phase === 'intro'
+              ? '이름과 요즘 마음에 걸리는 일을 알려주세요'
+              : phase === 'pick' && !done
+                ? `마음이 가는 카드를 ${SPREAD.length - picked.length}장 더 고르세요`
+                : phase === 'reading'
+                  ? '카드를 읽고 있습니다…'
+                  : '뽑힌 카드입니다'}
           </p>
         </header>
 
-        {phase !== 'done' && (
+        {phase === 'intro' && (
+          <div className="tarot-intro">
+            <label htmlFor="tarotName">
+              이름
+              <input
+                id="tarotName"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="이름을 입력하세요"
+              />
+            </label>
+
+            <label htmlFor="tarotConcern">
+              요즘 고민 (한 줄, 선택)
+              <input
+                id="tarotConcern"
+                type="text"
+                value={concern}
+                onChange={(e) => setConcern(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleStart()
+                }}
+                placeholder="예: 진로를 정하기가 어려워요"
+                maxLength={60}
+              />
+            </label>
+
+            <button type="button" className="tarot-btn" onClick={handleStart}>
+              카드 펼치기
+            </button>
+          </div>
+        )}
+
+        {(phase === 'pick' || phase === 'reading') && (
           <div className="fan">
             {Array.from({ length: FAN_SIZE }, (_, slot) => {
               const card = cardForSlot(slot)
@@ -101,6 +151,12 @@ export default function TarotPage({ onBack }) {
                       {card && (
                         <>
                           <span className="tarot-pos">{card.position.label}</span>
+                          <span
+                            className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
+                          >
+                            <span className="tarot-numeral">{card.numeral}</span>
+                            <span className="tarot-glyph">{card.glyph}</span>
+                          </span>
                           <span className="tarot-name">{card.name}</span>
                           <span
                             className={`tarot-dir${card.reversed ? ' is-rev' : ''}`}

@@ -136,10 +136,10 @@ export async function analyzeSaju(formData) {
 }
 
 /** 타로 해석 (뽑은 카드 번호를 카드 이름으로 정리해 보냅니다) */
-export async function analyzeTarot(draws) {
+export async function analyzeTarot(draws, info) {
   return requestReading({
     system: TAROT_SYSTEM_INSTRUCTION,
-    user: buildTarotUserPrompt(draws),
+    user: buildTarotUserPrompt(draws, info),
     failMessage: '타로 해석 요청에 실패했습니다.',
   })
 }

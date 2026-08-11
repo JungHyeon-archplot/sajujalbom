@@ -725,36 +725,98 @@ legend {
   font-size: 1.1rem;
 }
 
-/* 카드 앞면 */
+/* 카드 앞면 — 금테를 두른 타로 카드 형태 */
 .tarot-front {
   transform: rotateY(180deg);
-  padding: 0.3rem 0.25rem;
+  justify-content: space-between;
+  padding: 0.28rem 0.2rem 0.26rem;
   text-align: center;
   background: linear-gradient(165deg, #fdfaf3 0%, #f2e9d8 100%);
-  border: 1px solid rgba(180, 148, 74, 0.5);
+  border: 1px solid rgba(140, 110, 45, 0.7);
+  box-shadow: inset 0 0 0 2px rgba(200, 170, 100, 0.35);
   color: #3d2f12;
 }
 
 .tarot-pos {
-  font-size: 0.55rem;
+  font-size: 0.52rem;
   letter-spacing: 0.02em;
   color: #8a6a1f;
 }
 
+/* 그림 자리 — 역방향이면 뒤집힘 */
+.tarot-art {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 84%;
+  flex: 1;
+  margin: 0.1rem 0;
+  border: 1px solid rgba(160, 130, 60, 0.45);
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(232, 214, 160, 0.5) 0%, rgba(232, 214, 160, 0) 68%),
+    linear-gradient(180deg, #faf4e6 0%, #efe4cc 100%);
+  transition: transform 0.3s ease;
+}
+
+.tarot-art.is-rev {
+  transform: rotate(180deg);
+}
+
+.tarot-numeral {
+  position: absolute;
+  top: 1px;
+  font-size: 0.46rem;
+  letter-spacing: 0.04em;
+  color: #8a6a1f;
+}
+
+.tarot-glyph {
+  font-size: 1.15rem;
+  line-height: 1;
+  color: #6d4f14;
+}
+
 .tarot-name {
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   font-weight: 700;
-  line-height: 1.25;
+  line-height: 1.2;
   word-break: keep-all;
+  border-top: 1px solid rgba(160, 130, 60, 0.4);
+  width: 84%;
+  padding-top: 0.12rem;
 }
 
 .tarot-dir {
-  font-size: 0.56rem;
+  font-size: 0.54rem;
   color: #4f7a4f;
 }
 
 .tarot-dir.is-rev {
   color: #a24a4a;
+}
+
+/* 타로 입력 폼 */
+.tarot-intro {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1.1rem 1rem 1.2rem;
+  border-radius: 12px;
+  background: rgba(12, 4, 28, 0.45);
+  border: 1px solid rgba(198, 164, 255, 0.28);
+  box-shadow: 0 6px 18px rgba(8, 2, 20, 0.3);
+}
+
+.tarot-intro label {
+  color: #f0e3ff;
+  font-size: 0.88rem;
+}
+
+.tarot-intro input[type='text'] {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(198, 164, 255, 0.4);
 }
 
 .tarot-btn {
