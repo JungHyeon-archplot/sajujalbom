@@ -48,7 +48,7 @@ export function getKoreanAge(birthDate) {
 
 /**
  * 입력값을 사주 해석용 사용자 프롬프트로 만듭니다.
- * Gemini가 먼저 명식을 구성한 뒤, 기본차트해석 규칙으로 분석하게 합니다.
+ * Claude가 먼저 명식을 구성한 뒤, 기본차트해석 규칙으로 분석하게 합니다.
  */
 export function buildSajuUserPrompt({
   name,

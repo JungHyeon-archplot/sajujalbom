@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import dragonBg from './assets/dragon-bg.png'
-import { analyzeSaju } from './gemini.js'
+import { analyzeSaju } from './claude.js'
 import './App.css'
 
 function App() {
@@ -11,7 +11,7 @@ function App() {
   const [gender, setGender] = useState('') // 'male' | 'female'
   const [calendarType, setCalendarType] = useState('solar') // 'solar'(양력) | 'lunar'(음력)
 
-  // Gemini 호출 상태
+  // Claude 호출 상태
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')

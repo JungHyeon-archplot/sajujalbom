@@ -1,0 +1,9 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+  functions = "netlify/functions"
+
+[[redirects]]
+  from = "/api/analyze-saju"
+  to = "/.netlify/functions/analyze-saju"
+  status = 200
