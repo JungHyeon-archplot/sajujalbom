@@ -67,16 +67,13 @@ function App() {
     setResult('')
 
     try {
-      const text = await analyzeSaju(
-        {
-          name: name.trim(),
-          birthDate,
-          birthTime,
-          gender,
-          calendarType,
-        },
-        (partial) => setResult(stripMarkdown(partial)),
-      )
+      const text = await analyzeSaju({
+        name: name.trim(),
+        birthDate,
+        birthTime,
+        gender,
+        calendarType,
+      })
       setResult(stripMarkdown(text))
     } catch (err) {
       console.error(err)
@@ -257,7 +254,7 @@ function App() {
 
         {error && <p className="error">{error}</p>}
 
-        {loading && !result && (
+        {loading && (
           <div className="result skeleton" aria-busy="true" aria-live="polite">
             <p className="skeleton-status">사주를 읽고 있습니다…</p>
             <div className="skeleton-block">
@@ -284,10 +281,9 @@ function App() {
           </div>
         )}
 
-        {result && (
+        {result && !loading && (
           <div className="result" aria-live="polite">
             <pre className="result-text">{result}</pre>
-            {loading && <p className="skeleton-status">계속 해석 중…</p>}
           </div>
         )}
       </div>
