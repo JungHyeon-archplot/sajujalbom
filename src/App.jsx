@@ -1,41 +1,83 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import dragonBg from './assets/dragon-bg.png'
 import { analyzeSaju } from './claude.js'
 import './App.css'
 
-function App() {
-  // 각 입력값을 따로 상태로 관리합니다.
-  const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('') // 예: 1990-05-20
-  const [birthTime, setBirthTime] = useState('') // 예: 14:30
-  const [gender, setGender] = useState('') // 'male' | 'female'
-  const [calendarType, setCalendarType] = useState('solar') // 'solar'(양력) | 'lunar'(음력)
+const CURRENT_YEAR = new Date().getFullYear()
+const YEARS = Array.from({ length: CURRENT_YEAR - 1920 + 1 }, (_, i) => CURRENT_YEAR - i)
+const MONTHS = Array.from({ length: 12 }, (_, i) => i + 1)
+const HOURS = Array.from({ length: 24 }, (_, i) => i)
+const MINUTES = Array.from({ length: 60 }, (_, i) => i)
 
-  // Claude 호출 상태
+function daysInMonth(year, month) {
+  if (!year || !month) return 31
+  return new Date(year, month, 0).getDate()
+}
+
+function pad2(n) {
+  return String(n).padStart(2, '0')
+}
+
+/** 화면에 보이는 ##, **, * 같은 마크다운 기호를 제거합니다. */
+function stripMarkdown(text) {
+  return String(text || '')
+    .replace(/^#{1,6}\s*/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/__(.+?)__/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/^[-*•]\s+/gm, '· ')
+    .replace(/`([^`]+)`/g, '$1')
+}
+
+function App() {
+  const [name, setName] = useState('')
+  const [year, setYear] = useState('')
+  const [month, setMonth] = useState('')
+  const [day, setDay] = useState('')
+  const [hour, setHour] = useState('')
+  const [minute, setMinute] = useState('')
+  const [gender, setGender] = useState('') // 'male' | 'female'
+  const [calendarType, setCalendarType] = useState('solar') // 'solar' | 'lunar'
+
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
 
+  const dayOptions = useMemo(() => {
+    const max = daysInMonth(Number(year), Number(month))
+    return Array.from({ length: max }, (_, i) => i + 1)
+  }, [year, month])
+
+  function handleMonthOrYearChange(nextYear, nextMonth) {
+    const max = daysInMonth(Number(nextYear), Number(nextMonth))
+    if (day && Number(day) > max) setDay(String(max))
+  }
+
   async function handleAnalyze() {
-    // 필수값 간단 검사
-    if (!name.trim() || !birthDate || !birthTime || !gender) {
+    if (!name.trim() || !year || !month || !day || hour === '' || minute === '' || !gender) {
       setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
       return
     }
+
+    const birthDate = `${year}-${pad2(month)}-${pad2(day)}`
+    const birthTime = `${pad2(hour)}:${pad2(minute)}`
 
     setLoading(true)
     setError('')
     setResult('')
 
     try {
-      const text = await analyzeSaju({
-        name: name.trim(),
-        birthDate,
-        birthTime,
-        gender,
-        calendarType,
-      })
-      setResult(text)
+      const text = await analyzeSaju(
+        {
+          name: name.trim(),
+          birthDate,
+          birthTime,
+          gender,
+          calendarType,
+        },
+        (partial) => setResult(stripMarkdown(partial)),
+      )
+      setResult(stripMarkdown(text))
     } catch (err) {
       console.error(err)
       setError(err?.message || '사주 해석 중 오류가 발생했습니다.')
@@ -46,7 +88,6 @@ function App() {
 
   return (
     <div className="app">
-      {/* 용 이미지를 흐리게 배경으로 깔아 둡니다 */}
       <div
         className="app-bg"
         style={{ backgroundImage: `url(${dragonBg})` }}
@@ -56,7 +97,6 @@ function App() {
       <div className="app-content">
         <h1>정보입력</h1>
 
-        {/* 이름 */}
         <label htmlFor="name">
           이름
           <input
@@ -68,32 +108,96 @@ function App() {
           />
         </label>
 
-        {/* 생년월일: type="date"면 달력으로 고를 수 있습니다 */}
-        <label htmlFor="birthDate">
-          생년월일
-          <input
-            id="birthDate"
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-          />
-        </label>
+        <fieldset className="select-fieldset">
+          <legend>생년월일</legend>
+          <div className="select-row">
+            <label className="select-label" htmlFor="birthYear">
+              <select
+                id="birthYear"
+                value={year}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setYear(next)
+                  handleMonthOrYearChange(next, month)
+                }}
+              >
+                <option value="">년</option>
+                {YEARS.map((y) => (
+                  <option key={y} value={y}>
+                    {y}년
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="select-label" htmlFor="birthMonth">
+              <select
+                id="birthMonth"
+                value={month}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setMonth(next)
+                  handleMonthOrYearChange(year, next)
+                }}
+              >
+                <option value="">월</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>
+                    {m}월
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="select-label" htmlFor="birthDay">
+              <select
+                id="birthDay"
+                value={day}
+                onChange={(e) => setDay(e.target.value)}
+              >
+                <option value="">일</option>
+                {dayOptions.map((d) => (
+                  <option key={d} value={d}>
+                    {d}일
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </fieldset>
 
-        {/* 태어난 시간: type="time"이면 시:분 형식입니다 */}
-        <label htmlFor="birthTime">
-          태어난 시간
-          <input
-            id="birthTime"
-            type="time"
-            value={birthTime}
-            onChange={(e) => setBirthTime(e.target.value)}
-          />
-        </label>
+        <fieldset className="select-fieldset">
+          <legend>태어난 시간</legend>
+          <div className="select-row">
+            <label className="select-label" htmlFor="birthHour">
+              <select
+                id="birthHour"
+                value={hour}
+                onChange={(e) => setHour(e.target.value)}
+              >
+                <option value="">시</option>
+                {HOURS.map((h) => (
+                  <option key={h} value={h}>
+                    {h}시
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="select-label" htmlFor="birthMinute">
+              <select
+                id="birthMinute"
+                value={minute}
+                onChange={(e) => setMinute(e.target.value)}
+              >
+                <option value="">분</option>
+                {MINUTES.map((m) => (
+                  <option key={m} value={m}>
+                    {m}분
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        </fieldset>
 
-        {/*
-          성별: radio는 같은 name을 쓰면 하나만 선택됩니다.
-          checked={gender === 'male'} → 현재 상태가 male일 때만 체크됩니다.
-        */}
         <fieldset>
           <legend>성별</legend>
           <label className="radio-label">
@@ -118,7 +222,6 @@ function App() {
           </label>
         </fieldset>
 
-        {/* 양력 / 음력도 성별과 같은 radio 패턴입니다 */}
         <fieldset>
           <legend>양력 / 음력</legend>
           <label className="radio-label">
@@ -154,7 +257,7 @@ function App() {
 
         {error && <p className="error">{error}</p>}
 
-        {loading && (
+        {loading && !result && (
           <div className="result skeleton" aria-busy="true" aria-live="polite">
             <p className="skeleton-status">사주를 읽고 있습니다…</p>
             <div className="skeleton-block">
@@ -181,9 +284,10 @@ function App() {
           </div>
         )}
 
-        {result && !loading && (
-          <div className="result">
+        {result && (
+          <div className="result" aria-live="polite">
             <pre className="result-text">{result}</pre>
+            {loading && <p className="skeleton-status">계속 해석 중…</p>}
           </div>
         )}
       </div>
