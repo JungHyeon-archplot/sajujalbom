@@ -1,4 +1,5 @@
 import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from './sajuPrompt.js'
+import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from './tarotPrompt.js'
 
 const ACCESS_STORAGE_KEY = 'saju_access_password'
 
@@ -58,7 +59,7 @@ export async function unlockAccess(password) {
  * 서버는 타임아웃 방지를 위해 스트림으로 보내지만,
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
-export async function analyzeSaju(formData) {
+async function requestReading({ system, user, failMessage }) {
   const password = getStoredAccessPassword()
   if (!password) {
     throw new Error('비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.')
@@ -67,11 +68,7 @@ export async function analyzeSaju(formData) {
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      password,
-      system: SAJU_SYSTEM_INSTRUCTION,
-      user: buildSajuUserPrompt(formData),
-    }),
+    body: JSON.stringify({ password, system, user }),
   })
 
   const raw = await response.text()
@@ -84,7 +81,7 @@ export async function analyzeSaju(formData) {
       )
     }
 
-    let message = `사주 해석 요청에 실패했습니다. (${response.status})`
+    let message = `${failMessage} (${response.status})`
     if (body.startsWith('{')) {
       try {
         const data = JSON.parse(body)
@@ -105,7 +102,7 @@ export async function analyzeSaju(formData) {
 
   if (!body) {
     throw new Error(
-      'Claude 응답이 비어 있습니다. Netlify에 ANTHROPIC_API_KEY가 있는지, Claude Console 크레딧이 있는지 확인한 뒤 다시 시도해 주세요.',
+      'Claude 응답이 비어 있습니다. 배포 환경 변수에 ANTHROPIC_API_KEY가 있는지, Claude Console 크레딧이 있는지 확인한 뒤 다시 시도해 주세요.',
     )
   }
 
@@ -127,4 +124,22 @@ export async function analyzeSaju(formData) {
   }
 
   return body
+}
+
+/** 사주 해석 */
+export async function analyzeSaju(formData) {
+  return requestReading({
+    system: SAJU_SYSTEM_INSTRUCTION,
+    user: buildSajuUserPrompt(formData),
+    failMessage: '사주 해석 요청에 실패했습니다.',
+  })
+}
+
+/** 타로 해석 (뽑은 카드 번호를 카드 이름으로 정리해 보냅니다) */
+export async function analyzeTarot(draws) {
+  return requestReading({
+    system: TAROT_SYSTEM_INSTRUCTION,
+    user: buildTarotUserPrompt(draws),
+    failMessage: '타로 해석 요청에 실패했습니다.',
+  })
 }

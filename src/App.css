@@ -287,3 +287,674 @@ legend {
     background: rgba(0, 0, 0, 0.08);
   }
 }
+
+/* ───────────────── 처음 화면 (이지선다) ───────────────── */
+
+.home {
+  position: relative;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+  overflow: hidden;
+}
+
+.home-bg {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+}
+
+.wind-lines path {
+  animation: wind-drift 14s ease-in-out infinite alternate;
+}
+.wind-lines path:nth-child(even) {
+  animation-duration: 19s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes wind-drift {
+  from {
+    transform: translateX(-14px);
+  }
+  to {
+    transform: translateX(14px);
+  }
+}
+
+.home-content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 3rem 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.home-head {
+  text-align: center;
+  color: #f3e7c8;
+}
+
+.home-head h1 {
+  margin: 0;
+  font-size: 1.9rem;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  font-weight: 700;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.45);
+}
+
+.home-head p {
+  margin: 0.5rem 0 0;
+  font-size: 0.9rem;
+  color: rgba(243, 231, 200, 0.72);
+  letter-spacing: 0.05em;
+}
+
+.choice-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+}
+
+.choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  padding: 1.15rem 0.6rem 1.25rem;
+  border-radius: 14px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: inherit;
+  /* 적당한 그림자 (진하지 않게) */
+  box-shadow:
+    0 6px 16px rgba(4, 16, 32, 0.28),
+    0 1px 2px rgba(4, 16, 32, 0.2);
+  transform: translateY(0);
+  transition:
+    transform 0.14s ease,
+    box-shadow 0.14s ease;
+}
+
+/* 눌리는 입체감 */
+.choice:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow:
+    0 2px 6px rgba(4, 16, 32, 0.26),
+    0 1px 1px rgba(4, 16, 32, 0.18);
+}
+
+.choice:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.choice-art {
+  width: 74px;
+  height: 74px;
+}
+
+.choice-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-indent: 0.14em;
+}
+
+.choice-sub {
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  opacity: 0.66;
+}
+
+/* 사주: 흰 바탕 + 금빛 테두리 */
+.choice-saju {
+  background:
+    radial-gradient(120% 90% at 50% 0%, #ffffff 0%, #f7f3ea 62%, #efe7d6 100%);
+  border-color: rgba(180, 148, 74, 0.42);
+  color: #4a3b17;
+}
+
+.choice-saju .choice-sub {
+  color: #6b5827;
+}
+
+/* 타로: 보라 벨벳 + 반짝임 */
+.choice-tarot {
+  background:
+    radial-gradient(60% 45% at 28% 18%, rgba(214, 176, 255, 0.34) 0%, rgba(214, 176, 255, 0) 60%),
+    radial-gradient(70% 55% at 78% 82%, rgba(126, 74, 196, 0.5) 0%, rgba(126, 74, 196, 0) 62%),
+    linear-gradient(160deg, #4a2a7a 0%, #351c5c 46%, #26123f 100%);
+  border-color: rgba(196, 158, 255, 0.34);
+  color: #f0e3ff;
+}
+
+.choice-tarot .choice-sub {
+  color: rgba(240, 227, 255, 0.72);
+}
+
+/* 벨벳 결 + 스치는 광택 */
+.choice-tarot::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 18% 26%, rgba(255, 255, 255, 0.85) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 72% 16%, rgba(255, 255, 255, 0.7) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 84% 62%, rgba(255, 255, 255, 0.8) 0.9px, transparent 1.5px),
+    radial-gradient(circle at 34% 78%, rgba(255, 255, 255, 0.6) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 56% 44%, rgba(255, 255, 255, 0.5) 0.6px, transparent 1.2px);
+  animation: sparkle 3.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.choice-tarot::after {
+  content: '';
+  position: absolute;
+  top: -60%;
+  left: -35%;
+  width: 45%;
+  height: 220%;
+  background: linear-gradient(
+    100deg,
+    rgba(255, 255, 255, 0) 0%,
+    rgba(255, 255, 255, 0.16) 50%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  transform: rotate(12deg);
+  animation: velvet-sheen 5.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+@keyframes velvet-sheen {
+  0%, 100% { left: -35%; }
+  55% { left: 108%; }
+}
+
+/* 비밀번호 잠금 (처음 화면용) */
+.home-lock {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1.1rem 1rem 1.2rem;
+  border-radius: 12px;
+  background: rgba(8, 26, 48, 0.58);
+  border: 1px solid rgba(232, 200, 106, 0.28);
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 18px rgba(3, 12, 26, 0.3);
+}
+
+.home-lock label {
+  color: #f0e4c6;
+  font-size: 0.9rem;
+}
+
+.home-lock input[type='password'] {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(232, 200, 106, 0.4);
+}
+
+.home-unlock-btn {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-size: 0.98rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #241a06;
+  background: linear-gradient(180deg, #f0d98c 0%, #d5b45b 100%);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  box-shadow: 0 3px 8px rgba(3, 12, 26, 0.28);
+  transition: transform 0.12s ease, box-shadow 0.12s ease;
+}
+
+.home-unlock-btn:active:not(:disabled) {
+  transform: translateY(3px);
+  box-shadow: 0 1px 3px rgba(3, 12, 26, 0.24);
+}
+
+.home-unlock-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.home-hint-toggle {
+  align-self: flex-start;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(240, 217, 140, 0.85);
+  font-size: 0.85rem;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.home-hint {
+  margin: 0;
+  padding: 0.6rem 0.7rem;
+  font-size: 0.88rem;
+  color: #f2e8cd;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px dashed rgba(232, 200, 106, 0.45);
+  border-radius: 6px;
+}
+
+.home-unlocked {
+  margin: 0;
+  text-align: center;
+  font-size: 0.88rem;
+  color: rgba(240, 226, 190, 0.8);
+}
+
+.home-error {
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  color: #ffd9d9;
+  background: rgba(120, 24, 24, 0.42);
+  border: 1px solid rgba(255, 160, 160, 0.4);
+  border-radius: 6px;
+}
+
+/* 뒤로가기 */
+.back-btn {
+  align-self: flex-start;
+  padding: 0.3rem 0;
+  border: none;
+  background: none;
+  color: #444;
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.back-btn-dark {
+  color: rgba(240, 227, 255, 0.8);
+}
+
+/* ───────────────── 타로 화면 ───────────────── */
+
+.tarot {
+  position: relative;
+  min-height: 100vh;
+  font-family: system-ui, sans-serif;
+}
+
+/* 타로 책상 — 보라 벨벳 */
+.tarot-table {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background:
+    radial-gradient(80% 55% at 50% 26%, rgba(180, 132, 246, 0.28) 0%, rgba(88, 44, 156, 0) 62%),
+    radial-gradient(120% 90% at 50% 100%, rgba(20, 8, 36, 0.9) 0%, rgba(20, 8, 36, 0) 60%),
+    linear-gradient(165deg, #3d2168 0%, #2a1449 48%, #1a0c30 100%);
+}
+
+.tarot-table::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(circle at 12% 18%, rgba(255, 255, 255, 0.7) 0.8px, transparent 1.4px),
+    radial-gradient(circle at 68% 12%, rgba(255, 255, 255, 0.55) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 88% 46%, rgba(255, 255, 255, 0.65) 0.9px, transparent 1.5px),
+    radial-gradient(circle at 24% 62%, rgba(255, 255, 255, 0.5) 0.7px, transparent 1.3px),
+    radial-gradient(circle at 52% 88%, rgba(255, 255, 255, 0.45) 0.8px, transparent 1.4px);
+  animation: sparkle 4.2s ease-in-out infinite;
+}
+
+.tarot-content {
+  position: relative;
+  z-index: 1;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.tarot-head {
+  text-align: center;
+  color: #f0e3ff;
+}
+
+.tarot-head h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.2em;
+  text-indent: 0.2em;
+}
+
+.tarot-head p {
+  margin: 0.45rem 0 0;
+  font-size: 0.88rem;
+  color: rgba(240, 227, 255, 0.72);
+}
+
+/* 카드 부채 */
+.fan {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  perspective: 900px;
+}
+
+.tarot-card {
+  width: 62px;
+  height: 96px;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  transform: translateY(0);
+  transition: transform 0.2s ease;
+}
+
+.tarot-card:disabled {
+  cursor: default;
+}
+
+.tarot-card:not(:disabled):active {
+  transform: translateY(3px);
+}
+
+.tarot-card.is-picked {
+  transform: translateY(-8px);
+}
+
+.tarot-card-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.55s cubic-bezier(0.4, 0.1, 0.2, 1);
+  box-shadow: 0 5px 12px rgba(8, 2, 20, 0.42);
+  border-radius: 7px;
+}
+
+.tarot-card.is-picked .tarot-card-inner {
+  transform: rotateY(180deg);
+}
+
+.tarot-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  border-radius: 7px;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  overflow: hidden;
+}
+
+/* 카드 뒷면 */
+.tarot-back {
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 4px, rgba(255, 255, 255, 0) 4px 8px),
+    linear-gradient(160deg, #4b2b86 0%, #331a5e 60%, #241040 100%);
+  border: 1px solid rgba(200, 166, 255, 0.42);
+}
+
+.tarot-back::after {
+  content: '✦';
+  color: rgba(232, 214, 255, 0.62);
+  font-size: 1.1rem;
+}
+
+/* 카드 앞면 */
+.tarot-front {
+  transform: rotateY(180deg);
+  padding: 0.3rem 0.25rem;
+  text-align: center;
+  background: linear-gradient(165deg, #fdfaf3 0%, #f2e9d8 100%);
+  border: 1px solid rgba(180, 148, 74, 0.5);
+  color: #3d2f12;
+}
+
+.tarot-pos {
+  font-size: 0.55rem;
+  letter-spacing: 0.02em;
+  color: #8a6a1f;
+}
+
+.tarot-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1.25;
+  word-break: keep-all;
+}
+
+.tarot-dir {
+  font-size: 0.56rem;
+  color: #4f7a4f;
+}
+
+.tarot-dir.is-rev {
+  color: #a24a4a;
+}
+
+.tarot-btn {
+  width: 100%;
+  padding: 0.8rem 1rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f4ecff;
+  background: linear-gradient(180deg, #7c4bc8 0%, #5a2f9c 100%);
+  border: 1px solid rgba(198, 164, 255, 0.35);
+  border-radius: 8px;
+  cursor: pointer;
+  box-shadow: 0 5px 14px rgba(8, 2, 20, 0.36);
+  transition: transform 0.13s ease, box-shadow 0.13s ease;
+}
+
+.tarot-btn:active:not(:disabled) {
+  transform: translateY(4px);
+  box-shadow: 0 2px 5px rgba(8, 2, 20, 0.3);
+}
+
+.tarot-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+/* 유리구슬 */
+.tarot-reading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1.5rem 0 0.5rem;
+}
+
+.crystal-wrap {
+  position: relative;
+  width: 150px;
+  height: 168px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.crystal-glow {
+  position: absolute;
+  top: 6px;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(190, 150, 255, 0.55) 0%, rgba(190, 150, 255, 0) 68%);
+  filter: blur(6px);
+  animation: ball-glow 2.4s ease-in-out infinite;
+}
+
+.crystal-ball {
+  position: absolute;
+  top: 10px;
+  width: 118px;
+  height: 118px;
+  border-radius: 50%;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 34% 30%, rgba(255, 255, 255, 0.75) 0%, rgba(255, 255, 255, 0) 42%),
+    radial-gradient(circle at 62% 70%, rgba(168, 116, 240, 0.9) 0%, rgba(74, 38, 132, 0.95) 70%);
+  box-shadow:
+    inset 0 -10px 22px rgba(30, 10, 60, 0.6),
+    0 8px 22px rgba(8, 2, 20, 0.45);
+}
+
+.crystal-swirl {
+  position: absolute;
+  inset: -25%;
+  background: conic-gradient(
+    from 0deg,
+    rgba(255, 255, 255, 0) 0deg,
+    rgba(228, 200, 255, 0.55) 70deg,
+    rgba(255, 255, 255, 0) 140deg,
+    rgba(180, 230, 255, 0.45) 220deg,
+    rgba(255, 255, 255, 0) 300deg
+  );
+  animation: swirl 3.2s linear infinite;
+}
+
+.crystal-spark {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 30% 62%, rgba(255, 255, 255, 0.95) 1.4px, transparent 2.4px),
+    radial-gradient(circle at 68% 38%, rgba(255, 255, 255, 0.85) 1.2px, transparent 2.2px),
+    radial-gradient(circle at 52% 76%, rgba(255, 255, 255, 0.75) 1px, transparent 2px);
+  animation: sparkle 1.9s ease-in-out infinite;
+}
+
+.crystal-shine {
+  position: absolute;
+  top: 16px;
+  left: 22px;
+  width: 34px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.72);
+  filter: blur(3px);
+}
+
+.crystal-stand {
+  position: absolute;
+  bottom: 4px;
+  width: 92px;
+  height: 26px;
+  border-radius: 6px 6px 10px 10px;
+  background: linear-gradient(180deg, #d8b970 0%, #9a7833 60%, #6d5220 100%);
+  clip-path: polygon(12% 0, 88% 0, 100% 100%, 0 100%);
+  box-shadow: 0 5px 12px rgba(8, 2, 20, 0.45);
+}
+
+.tarot-reading-text {
+  margin: 0;
+  font-size: 0.92rem;
+  color: rgba(240, 227, 255, 0.85);
+  letter-spacing: 0.04em;
+}
+
+@keyframes swirl {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ball-glow {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+
+/* 뽑힌 카드 목록 */
+.drawn-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  border-radius: 10px;
+  background: rgba(12, 4, 28, 0.42);
+  border: 1px solid rgba(198, 164, 255, 0.26);
+}
+
+.drawn-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 0.6rem;
+  font-size: 0.86rem;
+  color: #f0e3ff;
+}
+
+.drawn-pos {
+  color: rgba(240, 227, 255, 0.62);
+  white-space: nowrap;
+}
+
+.drawn-name {
+  font-weight: 600;
+  text-align: right;
+}
+
+.drawn-name em {
+  margin-left: 0.35rem;
+  font-style: normal;
+  font-size: 0.76rem;
+  color: #9fd6a2;
+}
+
+.drawn-name em.is-rev {
+  color: #f0a5a5;
+}
+
+.tarot-result {
+  background: rgba(255, 255, 255, 0.94);
+  border-color: rgba(198, 164, 255, 0.4);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wind-lines path,
+  .choice-tarot::before,
+  .choice-tarot::after,
+  .tarot-table::after,
+  .crystal-swirl,
+  .crystal-glow,
+  .crystal-spark {
+    animation: none;
+  }
+  .tarot-card-inner {
+    transition: none;
+  }
+}
