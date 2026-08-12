@@ -1,22 +1,195 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import dragonBg from './assets/dragon-bg.png'
 import { analyzeSaju } from './claude.js'
-import { stripMarkdown } from './text.js'
+import {
+  deleteSajuReading,
+  getSajuReading,
+  listSajuReadings,
+  saveSajuReading,
+} from './supabase.js'
+import { parseSajuSections, stripMarkdown } from './text.js'
 
-/** 사주 입력 + 해석 화면 (기존 화면 그대로) */
+function formatBirthTime(value) {
+  if (!value) return ''
+  return String(value).slice(0, 5)
+}
+
+function genderLabel(value) {
+  if (value === 'male') return '남성'
+  if (value === 'female') return '여성'
+  return ''
+}
+
+function calendarLabel(value) {
+  if (value === 'lunar') return '음력'
+  if (value === 'solar') return '양력'
+  return ''
+}
+
+function SajuResultView({ reading, resultText, saveNotice }) {
+  const sections = parseSajuSections(resultText)
+  const metaBits = [
+    reading?.birth_date,
+    formatBirthTime(reading?.birth_time),
+    genderLabel(reading?.gender),
+    calendarLabel(reading?.calendar_type),
+  ].filter(Boolean)
+
+  return (
+    <div className="result result-view" aria-live="polite">
+      {(reading?.name || metaBits.length > 0) && (
+        <header className="result-header">
+          {reading?.name && <h2 className="result-name">{reading.name}</h2>}
+          {metaBits.length > 0 && (
+            <p className="result-meta">{metaBits.join(' · ')}</p>
+          )}
+          {saveNotice && <p className="result-save-notice">{saveNotice}</p>}
+        </header>
+      )}
+
+      {sections.length > 0 ? (
+        <div className="result-sections">
+          {sections.map((section, index) => (
+            <section key={`${section.title || 'body'}-${index}`} className="result-section">
+              {section.title && (
+                <h3 className="result-section-title">{section.title}</h3>
+              )}
+              <div className="result-section-body">
+                {section.body.split(/\n{2,}/).map((para, paraIndex) => (
+                  <p key={paraIndex}>{para.trim()}</p>
+                ))}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <pre className="result-text">{resultText}</pre>
+      )}
+    </div>
+  )
+}
+
+/** 사주 입력 + 해석 화면 */
 export default function SajuPage({ onBack }) {
+  const [mode, setMode] = useState('create') // 'create' | 'view'
   const [name, setName] = useState('')
-  const [birthDate, setBirthDate] = useState('') // 예: 2004-09-07
-  const [birthTime, setBirthTime] = useState('') // 예: 10:45
-  const [gender, setGender] = useState('') // 'male' | 'female'
-  const [calendarType, setCalendarType] = useState('solar') // 'solar' | 'lunar'
+  const [birthDate, setBirthDate] = useState('')
+  const [birthTime, setBirthTime] = useState('')
+  const [gender, setGender] = useState('')
+  const [calendarType, setCalendarType] = useState('solar')
 
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
+  const [readings, setReadings] = useState([])
+  const [selectedId, setSelectedId] = useState(null)
+  const [selectedReading, setSelectedReading] = useState(null)
+  const [saveNotice, setSaveNotice] = useState('')
+  const resultRef = useRef(null)
+  const saveNoticeTimer = useRef(null)
+
+  const canAnalyze = Boolean(
+    name.trim() && birthDate && birthTime && gender && !loading,
+  )
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function loadReadings() {
+      try {
+        const rows = await listSajuReadings()
+        if (!cancelled) setReadings(rows)
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
+    loadReadings()
+    return () => {
+      cancelled = true
+      if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
+    }
+  }, [])
+
+  function scrollToResult() {
+    requestAnimationFrame(() => {
+      resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+  }
+
+  function showSavedNotice() {
+    setSaveNotice('저장됨')
+    if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
+    saveNoticeTimer.current = setTimeout(() => setSaveNotice(''), 2500)
+  }
+
+  async function handleSelectReading(id) {
+    if (loading) return
+
+    setError('')
+    setSaveNotice('')
+    setSelectedId(id)
+    setMode('view')
+
+    try {
+      const row = await getSajuReading(id)
+      setSelectedReading(row)
+      setResult(stripMarkdown(row.result || ''))
+      setName(row.name || '')
+      setBirthDate(row.birth_date || '')
+      setBirthTime(formatBirthTime(row.birth_time))
+      setGender(row.gender || '')
+      setCalendarType(row.calendar_type || 'solar')
+      scrollToResult()
+    } catch (err) {
+      console.error(err)
+      setError(err?.message || '저장된 사주를 불러오지 못했습니다.')
+    }
+  }
+
+  function handleNewSaju() {
+    if (loading) return
+
+    setMode('create')
+    setName('')
+    setBirthDate('')
+    setBirthTime('')
+    setGender('')
+    setCalendarType('solar')
+    setResult('')
+    setError('')
+    setSaveNotice('')
+    setSelectedId(null)
+    setSelectedReading(null)
+
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      document.getElementById('name')?.focus()
+    })
+  }
+
+  async function handleDeleteReading(event, id, readingName) {
+    event.stopPropagation()
+    if (loading) return
+
+    const ok = window.confirm(`「${readingName}」사주를 삭제할까요?`)
+    if (!ok) return
+
+    try {
+      await deleteSajuReading(id)
+      setReadings((prev) => prev.filter((row) => row.id !== id))
+
+      if (selectedId === id) {
+        handleNewSaju()
+      }
+    } catch (err) {
+      console.error(err)
+      setError(err?.message || '삭제를 완료하지 못했습니다.')
+    }
+  }
 
   async function handleAnalyze() {
-    if (!name.trim() || !birthDate || !birthTime || !gender) {
+    if (!canAnalyze) {
       setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
       return
     }
@@ -24,6 +197,10 @@ export default function SajuPage({ onBack }) {
     setLoading(true)
     setError('')
     setResult('')
+    setSaveNotice('')
+    setSelectedId(null)
+    setSelectedReading(null)
+    setMode('create')
 
     try {
       const text = await analyzeSaju({
@@ -33,7 +210,34 @@ export default function SajuPage({ onBack }) {
         gender,
         calendarType,
       })
-      setResult(stripMarkdown(text))
+      const cleaned = stripMarkdown(text)
+      setResult(cleaned)
+      setSelectedReading({
+        name: name.trim(),
+        birth_date: birthDate,
+        birth_time: birthTime,
+        gender,
+        calendar_type: calendarType,
+      })
+      scrollToResult()
+
+      try {
+        const saved = await saveSajuReading({
+          name: name.trim(),
+          birthDate,
+          birthTime,
+          gender,
+          calendarType,
+          result: cleaned,
+        })
+        setSelectedId(saved.id)
+        setMode('view')
+        setReadings((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)])
+        showSavedNotice()
+      } catch (saveErr) {
+        console.error(saveErr)
+        setError('해석은 완료됐지만 저장에 실패했습니다.')
+      }
     } catch (err) {
       console.error(err)
       setError(err?.message || '사주 해석 중 오류가 발생했습니다.')
@@ -41,6 +245,15 @@ export default function SajuPage({ onBack }) {
       setLoading(false)
     }
   }
+
+  function handleFormKeyDown(event) {
+    if (event.key !== 'Enter' || mode !== 'create' || loading) return
+    if (event.target?.tagName === 'TEXTAREA') return
+    event.preventDefault()
+    if (canAnalyze) handleAnalyze()
+  }
+
+  const isViewMode = mode === 'view' && Boolean(result) && !loading
 
   return (
     <div className="app">
@@ -50,108 +263,179 @@ export default function SajuPage({ onBack }) {
         aria-hidden="true"
       />
 
-      <div className="app-content">
-        <button type="button" className="back-btn" onClick={onBack}>
-          ← 처음으로
-        </button>
-
-        <h1>정보입력</h1>
-
-        <div className="saju-form">
-          <label className="field-wide" htmlFor="name">
-            이름
-            <input
-              id="name"
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="이름을 입력하세요"
-            />
-          </label>
-
-          {/* 생년월일: type="date"면 달력으로 고를 수 있습니다 */}
-          <label htmlFor="birthDate">
-            생년월일
-            <input
-              id="birthDate"
-              type="date"
-              value={birthDate}
-              onChange={(e) => setBirthDate(e.target.value)}
-            />
-          </label>
-
-          {/* 태어난 시간: type="time"이면 시:분 형식입니다 */}
-          <label htmlFor="birthTime">
-            태어난 시간
-            <input
-              id="birthTime"
-              type="time"
-              value={birthTime}
-              onChange={(e) => setBirthTime(e.target.value)}
-            />
-          </label>
-
-          <div className="field">
-            <span className="field-label">성별</span>
-            <div className="radio-row">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="male"
-                  checked={gender === 'male'}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-                남성
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="gender"
-                  value="female"
-                  checked={gender === 'female'}
-                  onChange={(e) => setGender(e.target.value)}
-                />
-                여성
-              </label>
-            </div>
-          </div>
-
-          <div className="field">
-            <span className="field-label">양력 / 음력</span>
-            <div className="radio-row">
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="calendarType"
-                  value="solar"
-                  checked={calendarType === 'solar'}
-                  onChange={(e) => setCalendarType(e.target.value)}
-                />
-                양력
-              </label>
-              <label className="radio-label">
-                <input
-                  type="radio"
-                  name="calendarType"
-                  value="lunar"
-                  checked={calendarType === 'lunar'}
-                  onChange={(e) => setCalendarType(e.target.value)}
-                />
-                음력
-              </label>
-            </div>
-          </div>
-        </div>
-
+      <aside className="saju-history" aria-label="저장된 사주 목록">
+        <h2 className="saju-history-title">저장된 사주</h2>
         <button
           type="button"
-          className="analyze-btn"
-          onClick={handleAnalyze}
+          className="saju-new-btn"
+          onClick={handleNewSaju}
           disabled={loading}
         >
-          {loading ? '해석 중...' : '사주 해석하기'}
+          새 사주 만들기
         </button>
+        {readings.length === 0 ? (
+          <p className="saju-history-empty">아직 저장된 이름이 없습니다.</p>
+        ) : (
+          <ul className="saju-history-list">
+            {readings.map((row) => (
+              <li key={row.id} className="saju-history-row">
+                <button
+                  type="button"
+                  className={
+                    selectedId === row.id
+                      ? 'saju-history-item is-active'
+                      : 'saju-history-item'
+                  }
+                  onClick={() => handleSelectReading(row.id)}
+                  disabled={loading}
+                >
+                  {row.name}
+                </button>
+                <button
+                  type="button"
+                  className="saju-history-delete"
+                  aria-label={`${row.name} 삭제`}
+                  onClick={(event) => handleDeleteReading(event, row.id, row.name)}
+                  disabled={loading}
+                >
+                  ×
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </aside>
+
+      <div className="app-content">
+        <div className="saju-top-actions">
+          <button type="button" className="back-btn" onClick={onBack}>
+            ← 처음으로
+          </button>
+          {isViewMode && (
+            <button
+              type="button"
+              className="saju-new-btn saju-new-btn-inline"
+              onClick={handleNewSaju}
+              disabled={loading}
+            >
+              새 사주 만들기
+            </button>
+          )}
+        </div>
+
+        {isViewMode ? (
+          <h1>저장된 사주</h1>
+        ) : (
+          <>
+            <h1>정보입력</h1>
+            <div className="saju-form" onKeyDown={handleFormKeyDown}>
+              <label className="field-wide" htmlFor="name">
+                이름
+                <input
+                  id="name"
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="이름을 입력하세요"
+                  disabled={loading}
+                />
+              </label>
+
+              <label htmlFor="birthDate">
+                생년월일
+                <input
+                  id="birthDate"
+                  type="date"
+                  value={birthDate}
+                  onChange={(e) => setBirthDate(e.target.value)}
+                  disabled={loading}
+                />
+              </label>
+
+              <label htmlFor="birthTime">
+                태어난 시간
+                <input
+                  id="birthTime"
+                  type="time"
+                  value={birthTime}
+                  onChange={(e) => setBirthTime(e.target.value)}
+                  disabled={loading}
+                />
+              </label>
+
+              <div className="field">
+                <span className="field-label">성별</span>
+                <div className="radio-row">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="male"
+                      checked={gender === 'male'}
+                      onChange={(e) => setGender(e.target.value)}
+                      disabled={loading}
+                    />
+                    남성
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="gender"
+                      value="female"
+                      checked={gender === 'female'}
+                      onChange={(e) => setGender(e.target.value)}
+                      disabled={loading}
+                    />
+                    여성
+                  </label>
+                </div>
+              </div>
+
+              <div className="field">
+                <span className="field-label">양력 / 음력</span>
+                <div className="radio-row">
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="calendarType"
+                      value="solar"
+                      checked={calendarType === 'solar'}
+                      onChange={(e) => setCalendarType(e.target.value)}
+                      disabled={loading}
+                    />
+                    양력
+                  </label>
+                  <label className="radio-label">
+                    <input
+                      type="radio"
+                      name="calendarType"
+                      value="lunar"
+                      checked={calendarType === 'lunar'}
+                      onChange={(e) => setCalendarType(e.target.value)}
+                      disabled={loading}
+                    />
+                    음력
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              className="analyze-btn"
+              onClick={handleAnalyze}
+              disabled={!canAnalyze}
+            >
+              {loading ? '해석 중...' : '사주 해석하기'}
+            </button>
+
+            {!canAnalyze && !loading && (
+              <p className="saju-form-hint">
+                이름, 생년월일, 태어난 시간, 성별을 입력하면 해석할 수 있습니다.
+              </p>
+            )}
+          </>
+        )}
 
         {error && <p className="error">{error}</p>}
 
@@ -183,8 +467,12 @@ export default function SajuPage({ onBack }) {
         )}
 
         {result && !loading && (
-          <div className="result" aria-live="polite">
-            <pre className="result-text">{result}</pre>
+          <div ref={resultRef}>
+            <SajuResultView
+              reading={selectedReading}
+              resultText={result}
+              saveNotice={saveNotice}
+            />
           </div>
         )}
       </div>

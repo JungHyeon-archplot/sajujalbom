@@ -5,6 +5,177 @@
   font-size: 15px;
 }
 
+/* 저장된 사주 이름 사이드 목록 */
+.saju-history {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  box-sizing: border-box;
+  width: 168px;
+  height: 100vh;
+  padding: 1.25rem 0.9rem;
+  overflow-y: auto;
+  background: rgba(255, 255, 255, 0.72);
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
+  backdrop-filter: blur(6px);
+}
+
+.saju-history-title {
+  margin: 0 0 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.saju-new-btn {
+  box-sizing: border-box;
+  width: 100%;
+  margin-bottom: 0.85rem;
+  padding: 0.55rem 0.65rem;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  border-radius: 4px;
+  background: #1a1a1a;
+  color: #fff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  line-height: 1.3;
+  cursor: pointer;
+}
+
+.saju-new-btn:hover {
+  background: #333;
+}
+
+.saju-new-btn:disabled,
+.saju-history-item:disabled,
+.saju-history-delete:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saju-new-btn-inline {
+  width: auto;
+  margin-bottom: 0;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.saju-top-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.saju-history-empty {
+  margin: 0;
+  color: #666;
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
+
+.saju-form-hint {
+  margin: 0;
+  color: #666;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.saju-history-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.saju-history-row {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.saju-history-item {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0.35rem;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.3;
+  text-align: left;
+  word-break: keep-all;
+  cursor: pointer;
+}
+
+.saju-history-delete {
+  flex: 0 0 auto;
+  width: 1.6rem;
+  height: 1.6rem;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: #777;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.saju-history-delete:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: #8b1a1a;
+}
+
+.saju-history-item:hover:not(:disabled),
+.saju-history-item.is-active {
+  color: #1a1a1a;
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@media (min-width: 900px) {
+  .app {
+    padding-left: 168px;
+  }
+}
+
+@media (max-width: 899px) {
+  .saju-history {
+    position: sticky;
+    top: 0;
+    width: 100%;
+    height: auto;
+    max-height: 140px;
+    border-right: none;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  }
+
+  .saju-history-list {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.55rem;
+  }
+
+  .saju-history-row {
+    border-bottom: none;
+    background: rgba(255, 255, 255, 0.7);
+    border-radius: 4px;
+    padding-right: 0.15rem;
+  }
+
+  .saju-history-item {
+    width: auto;
+    border-bottom: none;
+    padding: 0.35rem 0.45rem;
+  }
+}
+
 /* 용 이미지 배경 — 흐리게 + 살짝 투명하게 */
 .app-bg {
   position: fixed;
@@ -284,6 +455,66 @@ legend {
   font-family: inherit;
   font-size: 0.95rem;
   line-height: 1.65;
+}
+
+.result-view {
+  padding: 1.15rem 1.1rem 1.25rem;
+}
+
+.result-header {
+  margin-bottom: 1.1rem;
+  padding-bottom: 0.85rem;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.result-name {
+  margin: 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.result-meta {
+  margin: 0;
+  color: #555;
+  font-size: 0.88rem;
+  line-height: 1.4;
+}
+
+.result-save-notice {
+  margin: 0.55rem 0 0;
+  color: #1f6b3a;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.result-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+.result-section-title {
+  margin: 0 0 0.55rem;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.result-section-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+}
+
+.result-section-body p {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+  line-height: 1.75;
+  color: #222;
 }
 
 /* 해석 로딩 스켈레톤 */
