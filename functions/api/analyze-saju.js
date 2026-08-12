@@ -63,6 +63,10 @@ export async function onRequestPost(context) {
 
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
+        } else if (kind === 'tarot') {
+          const task = archiveReading(env, payload.user, result.text)
+          if (context?.waitUntil) context.waitUntil(task)
+          else await task
         }
         controller.close()
       } catch (err) {
@@ -168,6 +172,55 @@ async function checkUsageLimit(kind, request, env, context) {
   } catch {
     // 제한 장치가 실패해도 서비스는 계속 되게 둡니다.
     return null
+  }
+}
+
+/* ── 해석 기록 보관 (서버에서만 동작) ── */
+
+/**
+ * 요청 본문에 이미 들어 있는 프롬프트에서 이름·고민·카드를 뽑아냅니다.
+ * 프롬프트 형식은 이쪽에서 만들기 때문에 형태가 고정돼 있습니다.
+ */
+function parseReadingMeta(userPrompt) {
+  const text = String(userPrompt || '')
+
+  const name = /상담자:\s*(.+)/.exec(text)?.[1]?.trim() || null
+  let concern = /요즘 고민(?:\(가장 중요\))?:\s*(.+)/.exec(text)?.[1]?.trim() || null
+  if (concern && concern.startsWith('따로 적지 않음')) concern = null
+
+  const cards = [
+    ...text.matchAll(
+      /^(오늘의 운|이번 달의 운|마음고생|연애운|학업·취업운):\s*(.+)$/gm,
+    ),
+  ].map((m) => ({ position: m[1], card: m[2].trim() }))
+
+  return { name: name === '이름 미입력' ? null : name, concern, cards }
+}
+
+async function archiveReading(env, userPrompt, result) {
+  const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+  const key = env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !key) return
+
+  try {
+    const meta = parseReadingMeta(userPrompt)
+    await fetch(`${url}/rest/v1/tarot_readings`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        apikey: key,
+        Authorization: `Bearer ${key}`,
+        Prefer: 'return=minimal',
+      },
+      body: JSON.stringify({
+        name: meta.name,
+        concern: meta.concern,
+        cards: meta.cards,
+        result,
+      }),
+    })
+  } catch {
+    // 보관에 실패해도 해석 결과에는 영향을 주지 않습니다.
   }
 }
 
