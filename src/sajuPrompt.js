@@ -16,7 +16,7 @@ export const SAJU_SYSTEM_INSTRUCTION = `return only Korean.
    - 연애 성향과 끌리는 상대 유형
    - 연애에서 잘 되는 점 / 자주 막히는 점
    - 관계에서 조심할 패턴
-   - 최근~앞으로의 연애운 흐름(대운·세운을 근거로)
+   - 올해와 내년의 연애운 흐름(대운·세운을 근거로, 위에 적힌 기준 연도를 따를 것)
    - 연애운을 높이는 실천 조언 1~2가지
 6) 판단 근거는 사용자가 제공한 모든 정보와 해석 가능한 모든 사주 정보를 종합해 제시해 주세요.
 7) 긍정적 해석과 부정적 해석을 모두 고려해 주세요.
@@ -72,7 +72,16 @@ export function buildSajuUserPrompt({
   const genderLabel = gender === 'male' ? '남성' : gender === 'female' ? '여성' : '미입력'
   const calendarLabel = calendarType === 'lunar' ? '음력' : '양력'
 
+  // 세운·월운이 과거 연도로 흐르지 않도록 실제 오늘 날짜를 기준으로 넣습니다.
+  const today = new Date()
+  const y = today.getFullYear()
+  const todayStr = `${y}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+
   return `아래 출생 정보를 바탕으로 사주 명식(년주·월주·일주·시주, 오행, 십신, 지장간, 납음, 십이운성, 12신살, 공망, 월령, 대운·세운·월운 등)을 정확히 구성한 뒤, 기본차트해석과 별도의 「연애운」 파트를 작성하세요.
+
+오늘 날짜: ${todayStr}
+기준 연도: ${y}년 (반드시 이 연도를 '올해'로 삼으세요)
+운세 흐름을 말할 때는 ${y}년 현재와 ${y + 1}년 전망만 다루세요. ${y - 1}년 이전을 '올해'나 '앞으로'로 표현하면 안 됩니다.
 
 이름: ${name || '미입력'}
 성별: ${genderLabel}

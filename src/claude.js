@@ -131,6 +131,7 @@ export async function analyzeSaju(formData) {
   return requestReading({
     system: SAJU_SYSTEM_INSTRUCTION,
     user: buildSajuUserPrompt(formData),
+    kind: 'saju',
     failMessage: '사주 해석 요청에 실패했습니다.',
   })
 }

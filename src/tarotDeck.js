@@ -70,7 +70,7 @@ export const SPREAD = [
   { key: 'month', label: '이번 달의 운' },
   { key: 'mind', label: '마음고생' },
   { key: 'love', label: '연애운' },
-  { key: 'study', label: '학업운' },
+  { key: 'study', label: '학업·취업운' },
 ]
 
 /** 화면에 깔아 둘 뒷면 카드 장수 */

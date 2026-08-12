@@ -56,8 +56,10 @@ select {
   width: 100%;
   max-width: 100%;
   min-width: 0;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.95rem;
+  /* 모바일에서 넉넉한 터치 영역 + iOS 자동 확대 방지(16px) */
+  min-height: 48px;
+  padding: 0.6rem 0.85rem;
+  font-size: 16px;
   line-height: 1.4;
   background: rgba(255, 255, 255, 0.85);
   border: 1px solid #ccc;
@@ -137,9 +139,68 @@ legend {
 .radio-label {
   flex-direction: row;
   align-items: center;
+  gap: 0.35rem;
   font-weight: 400;
   font-size: 0.95rem;
-  margin-top: 0.5rem;
+}
+
+/* 성별 / 양력·음력 — 박스(fieldset) 없이 생년월일과 같은 형태 */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.field-label {
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  min-height: 48px;
+}
+
+/* 사주 입력 폼 — 모바일 1열, 넓은 화면 2열 */
+.saju-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.15rem;
+}
+
+@media (min-width: 700px) {
+  .app-content {
+    max-width: 720px;
+    padding: 2.5rem 1.5rem;
+  }
+
+  .app-content h1 {
+    font-size: 1.75rem;
+  }
+
+  .saju-form {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.15rem 1.4rem;
+    align-items: start;
+  }
+
+  .saju-form .field-wide {
+    grid-column: 1 / -1;
+  }
+
+  .analyze-btn {
+    font-size: 1.05rem;
+    padding: 0.85rem 1rem;
+  }
+
+  .result-text {
+    font-size: 1rem;
+    line-height: 1.75;
+  }
 }
 
 .analyze-btn {
@@ -737,10 +798,60 @@ legend {
   color: #3d2f12;
 }
 
-.tarot-pos {
-  font-size: 0.52rem;
-  letter-spacing: 0.02em;
-  color: #8a6a1f;
+/* 카드가 깔리는 연출 */
+.fan-slot {
+  display: block;
+  animation: deal 0.45s cubic-bezier(0.2, 0.8, 0.3, 1) both;
+  animation-delay: calc(var(--i) * 55ms);
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(-38px) rotate(-10deg) scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* 섞는 연출 */
+.shuffle-stack {
+  position: relative;
+  height: 140px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.shuffle-card {
+  position: absolute;
+  width: 62px;
+  height: 96px;
+  border-radius: 7px;
+  background:
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 4px, rgba(255, 255, 255, 0) 4px 8px),
+    linear-gradient(160deg, #4b2b86 0%, #331a5e 60%, #241040 100%);
+  border: 1px solid rgba(200, 166, 255, 0.42);
+  box-shadow: 0 5px 12px rgba(8, 2, 20, 0.42);
+  animation: riffle 1.05s ease-in-out infinite;
+  animation-delay: calc(var(--i) * 90ms);
+}
+
+@keyframes riffle {
+  0% {
+    transform: translateX(0) rotate(0deg);
+  }
+  28% {
+    transform: translateX(-52px) rotate(-13deg);
+  }
+  58% {
+    transform: translateX(46px) rotate(11deg);
+  }
+  100% {
+    transform: translateX(0) rotate(0deg);
+  }
 }
 
 /* 그림 자리 — 역방향이면 뒤집힘 */
@@ -1020,6 +1131,84 @@ legend {
   border-color: rgba(198, 164, 255, 0.4);
 }
 
+/* 넓은 화면에서 처음 화면 / 타로 화면 */
+@media (min-width: 700px) {
+  .home-content,
+  .tarot-content {
+    max-width: 760px;
+    padding-top: 3.5rem;
+  }
+
+  .home-head h1 {
+    font-size: 2.3rem;
+  }
+
+  .choice-row {
+    gap: 1.4rem;
+  }
+
+  .choice {
+    padding: 2rem 1rem 2.1rem;
+    border-radius: 18px;
+  }
+
+  .choice-art {
+    width: 104px;
+    height: 104px;
+  }
+
+  .choice-title {
+    font-size: 1.4rem;
+  }
+
+  .choice-sub {
+    font-size: 0.85rem;
+  }
+
+  .home-lock {
+    max-width: 460px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .tarot-intro {
+    max-width: 520px;
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .tarot-card {
+    width: 84px;
+    height: 130px;
+  }
+
+  .shuffle-card {
+    width: 84px;
+    height: 130px;
+  }
+
+  .shuffle-stack {
+    height: 176px;
+  }
+
+  .tarot-name {
+    font-size: 0.78rem;
+  }
+
+  .tarot-dir {
+    font-size: 0.64rem;
+  }
+
+  .drawn-art {
+    width: 52px;
+    height: 84px;
+  }
+
+  .drawn-item {
+    font-size: 0.95rem;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .wind-lines path,
   .choice-tarot::before,
@@ -1027,7 +1216,9 @@ legend {
   .tarot-table::after,
   .crystal-swirl,
   .crystal-glow,
-  .crystal-spark {
+  .crystal-spark,
+  .shuffle-card,
+  .fan-slot {
     animation: none;
   }
   .tarot-card-inner {

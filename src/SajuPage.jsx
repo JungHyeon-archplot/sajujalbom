@@ -57,86 +57,92 @@ export default function SajuPage({ onBack }) {
 
         <h1>정보입력</h1>
 
-        <label htmlFor="name">
-          이름
-          <input
-            id="name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="이름을 입력하세요"
-          />
-        </label>
-
-        {/* 생년월일: type="date"면 달력으로 고를 수 있습니다 */}
-        <label htmlFor="birthDate">
-          생년월일
-          <input
-            id="birthDate"
-            type="date"
-            value={birthDate}
-            onChange={(e) => setBirthDate(e.target.value)}
-          />
-        </label>
-
-        {/* 태어난 시간: type="time"이면 시:분 형식입니다 */}
-        <label htmlFor="birthTime">
-          태어난 시간
-          <input
-            id="birthTime"
-            type="time"
-            value={birthTime}
-            onChange={(e) => setBirthTime(e.target.value)}
-          />
-        </label>
-
-        <fieldset>
-          <legend>성별</legend>
-          <label className="radio-label">
+        <div className="saju-form">
+          <label className="field-wide" htmlFor="name">
+            이름
             <input
-              type="radio"
-              name="gender"
-              value="male"
-              checked={gender === 'male'}
-              onChange={(e) => setGender(e.target.value)}
+              id="name"
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="이름을 입력하세요"
             />
-            남성
           </label>
-          <label className="radio-label">
-            <input
-              type="radio"
-              name="gender"
-              value="female"
-              checked={gender === 'female'}
-              onChange={(e) => setGender(e.target.value)}
-            />
-            여성
-          </label>
-        </fieldset>
 
-        <fieldset>
-          <legend>양력 / 음력</legend>
-          <label className="radio-label">
+          {/* 생년월일: type="date"면 달력으로 고를 수 있습니다 */}
+          <label htmlFor="birthDate">
+            생년월일
             <input
-              type="radio"
-              name="calendarType"
-              value="solar"
-              checked={calendarType === 'solar'}
-              onChange={(e) => setCalendarType(e.target.value)}
+              id="birthDate"
+              type="date"
+              value={birthDate}
+              onChange={(e) => setBirthDate(e.target.value)}
             />
-            양력
           </label>
-          <label className="radio-label">
+
+          {/* 태어난 시간: type="time"이면 시:분 형식입니다 */}
+          <label htmlFor="birthTime">
+            태어난 시간
             <input
-              type="radio"
-              name="calendarType"
-              value="lunar"
-              checked={calendarType === 'lunar'}
-              onChange={(e) => setCalendarType(e.target.value)}
+              id="birthTime"
+              type="time"
+              value={birthTime}
+              onChange={(e) => setBirthTime(e.target.value)}
             />
-            음력
           </label>
-        </fieldset>
+
+          <div className="field">
+            <span className="field-label">성별</span>
+            <div className="radio-row">
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="male"
+                  checked={gender === 'male'}
+                  onChange={(e) => setGender(e.target.value)}
+                />
+                남성
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="gender"
+                  value="female"
+                  checked={gender === 'female'}
+                  onChange={(e) => setGender(e.target.value)}
+                />
+                여성
+              </label>
+            </div>
+          </div>
+
+          <div className="field">
+            <span className="field-label">양력 / 음력</span>
+            <div className="radio-row">
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="calendarType"
+                  value="solar"
+                  checked={calendarType === 'solar'}
+                  onChange={(e) => setCalendarType(e.target.value)}
+                />
+                양력
+              </label>
+              <label className="radio-label">
+                <input
+                  type="radio"
+                  name="calendarType"
+                  value="lunar"
+                  checked={calendarType === 'lunar'}
+                  onChange={(e) => setCalendarType(e.target.value)}
+                />
+                음력
+              </label>
+            </div>
+          </div>
+        </div>
 
         <button
           type="button"

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { analyzeTarot } from './claude.js'
 import { FAN_SIZE, SPREAD, describeCard, drawCardIds } from './tarotDeck.js'
 import { stripMarkdown } from './text.js'
@@ -30,6 +30,13 @@ export default function TarotPage({ onBack }) {
 
   const done = picked.length === SPREAD.length
 
+  // 섞는 연출을 잠깐 보여준 뒤 카드를 펼칩니다.
+  useEffect(() => {
+    if (phase !== 'shuffle') return undefined
+    const timer = setTimeout(() => setPhase('pick'), 1600)
+    return () => clearTimeout(timer)
+  }, [phase])
+
   function handlePick(slot) {
     if (phase !== 'pick' || picked.includes(slot) || done) return
     setPicked((prev) => [...prev, slot])
@@ -47,7 +54,7 @@ export default function TarotPage({ onBack }) {
       return
     }
     setError('')
-    setPhase('pick')
+    setPhase('shuffle')
   }
 
   async function handleRead() {
@@ -73,7 +80,7 @@ export default function TarotPage({ onBack }) {
     setPicked([])
     setResult('')
     setError('')
-    setPhase('pick')
+    setPhase('shuffle')
   }
 
   return (
@@ -90,11 +97,13 @@ export default function TarotPage({ onBack }) {
           <p>
             {phase === 'intro'
               ? '이름과 요즘 마음에 걸리는 일을 알려주세요'
-              : phase === 'pick' && !done
-                ? `마음이 가는 카드를 ${SPREAD.length - picked.length}장 더 고르세요`
-                : phase === 'reading'
-                  ? '카드를 읽고 있습니다…'
-                  : '뽑힌 카드입니다'}
+              : phase === 'shuffle'
+                ? '카드를 섞고 있습니다…'
+                : phase === 'pick' && !done
+                  ? `마음이 가는 카드를 ${SPREAD.length - picked.length}장 더 고르세요`
+                  : phase === 'reading'
+                    ? '카드를 읽고 있습니다…'
+                    : '뽑힌 카드입니다'}
           </p>
         </header>
 
@@ -132,41 +141,49 @@ export default function TarotPage({ onBack }) {
           </div>
         )}
 
+        {phase === 'shuffle' && (
+          <div className="shuffle-stack" aria-hidden="true">
+            {Array.from({ length: 5 }, (_, i) => (
+              <span key={i} className="shuffle-card" style={{ '--i': i }} />
+            ))}
+          </div>
+        )}
+
         {(phase === 'pick' || phase === 'reading') && (
           <div className="fan">
             {Array.from({ length: FAN_SIZE }, (_, slot) => {
               const card = cardForSlot(slot)
               return (
-                <button
-                  key={slot}
-                  type="button"
-                  className={`tarot-card${card ? ' is-picked' : ''}`}
-                  onClick={() => handlePick(slot)}
-                  disabled={phase !== 'pick' || (done && !card)}
-                  aria-label={card ? card.display : `카드 ${slot + 1}`}
-                >
-                  <span className="tarot-card-inner">
-                    <span className="tarot-face tarot-back" />
-                    <span className="tarot-face tarot-front">
-                      {card && (
-                        <>
-                          <span className="tarot-pos">{card.position.label}</span>
-                          <span
-                            className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
-                          >
-                            <img src={card.image} alt="" />
-                          </span>
-                          <span className="tarot-name">{card.name}</span>
-                          <span
-                            className={`tarot-dir${card.reversed ? ' is-rev' : ''}`}
-                          >
-                            {card.orientation}
-                          </span>
-                        </>
-                      )}
+                <span key={slot} className="fan-slot" style={{ '--i': slot }}>
+                  <button
+                    type="button"
+                    className={`tarot-card${card ? ' is-picked' : ''}`}
+                    onClick={() => handlePick(slot)}
+                    disabled={phase !== 'pick' || (done && !card)}
+                    aria-label={card ? card.display : `카드 ${slot + 1}`}
+                  >
+                    <span className="tarot-card-inner">
+                      <span className="tarot-face tarot-back" />
+                      <span className="tarot-face tarot-front">
+                        {card && (
+                          <>
+                            <span
+                              className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
+                            >
+                              <img src={card.image} alt="" />
+                            </span>
+                            <span className="tarot-name">{card.name}</span>
+                            <span
+                              className={`tarot-dir${card.reversed ? ' is-rev' : ''}`}
+                            >
+                              {card.orientation}
+                            </span>
+                          </>
+                        )}
+                      </span>
                     </span>
-                  </span>
-                </button>
+                  </button>
+                </span>
               )
             })}
           </div>

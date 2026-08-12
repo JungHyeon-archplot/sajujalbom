@@ -39,11 +39,10 @@ export async function onRequestPost(context) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  // 타로는 수요가 몰릴 수 있어 IP당 사용량을 제한합니다.
-  if (payload?.kind === 'tarot') {
-    const blocked = await checkTarotLimit(request, env, context)
-    if (blocked) return jsonError(429, blocked)
-  }
+  // 수요가 몰릴 수 있어 IP당 사용량을 제한합니다.
+  const kind = payload?.kind === 'tarot' ? 'tarot' : 'saju'
+  const blocked = await checkUsageLimit(kind, request, env, context)
+  if (blocked) return jsonError(429, blocked)
 
   const encoder = new TextEncoder()
 
@@ -92,24 +91,32 @@ export async function onRequestPost(context) {
   })
 }
 
-/* ── 타로 사용량 제한: 4시간 안에 3회까지 ── */
-const TAROT_LIMIT = 3
-const TAROT_WINDOW_MS = 4 * 60 * 60 * 1000
+/* ── 사용량 제한: 4시간 창 안에서 타로 3회 / 사주 2회 ── */
+const WINDOW_MS = 4 * 60 * 60 * 1000
+const LIMITS = {
+  tarot: { max: 3, label: '타로' },
+  saju: { max: 2, label: '사주' },
+}
 
-function limitMessage(resetAt) {
-  const leftMin = Math.max(1, Math.ceil((resetAt - Date.now()) / 60000))
+function limitMessage(kind, resetAt) {
+  const { max, label } = LIMITS[kind]
+  const leftMs = Math.max(60000, resetAt - Date.now())
+  const leftMin = Math.ceil(leftMs / 60000)
   const h = Math.floor(leftMin / 60)
   const m = leftMin % 60
-  const left = h > 0 ? `${h}시간 ${m}분` : `${m}분`
-  return `제 API 사용량이 녹고 있어요… 타로는 4시간에 ${TAROT_LIMIT}번까지만 볼 수 있어요. ${left} 뒤에 다시 찾아와 주세요.`
+  const left = h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`
+  // 남은 시간을 100배로 부풀린 "대기 인원" 연출
+  const queue = (leftMin * 100).toLocaleString('ko-KR')
+  return `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 찾아와 주세요.`
 }
 
 /**
- * IP별 타로 횟수를 셉니다.
+ * IP별 사용 횟수를 셉니다.
  * KV(TAROT_LIMIT_KV)가 연결돼 있으면 KV를, 없으면 Cache API를 씁니다.
  * @returns {Promise<string|null>} 막아야 하면 안내 문구, 통과면 null
  */
-async function checkTarotLimit(request, env, context) {
+async function checkUsageLimit(kind, request, env, context) {
+  const { max } = LIMITS[kind]
   const ip =
     request.headers.get('CF-Connecting-IP') ||
     request.headers.get('x-forwarded-for') ||
@@ -118,12 +125,13 @@ async function checkTarotLimit(request, env, context) {
 
   // 1) KV가 있으면 KV 사용 (정확도 높음)
   if (env.TAROT_LIMIT_KV) {
-    const key = `tarot:${ip}`
+    const key = `${kind}:${ip}`
     const raw = await env.TAROT_LIMIT_KV.get(key)
     const state = raw ? JSON.parse(raw) : null
-    const fresh = state && state.resetAt > now ? state : { count: 0, resetAt: now + TAROT_WINDOW_MS }
+    const fresh =
+      state && state.resetAt > now ? state : { count: 0, resetAt: now + WINDOW_MS }
 
-    if (fresh.count >= TAROT_LIMIT) return limitMessage(fresh.resetAt)
+    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt)
 
     fresh.count += 1
     await env.TAROT_LIMIT_KV.put(key, JSON.stringify(fresh), {
@@ -136,15 +144,15 @@ async function checkTarotLimit(request, env, context) {
   try {
     const cache = caches.default
     const key = new Request(
-      `https://tarot-limit.internal/${encodeURIComponent(ip)}`,
+      `https://usage-limit.internal/${kind}/${encodeURIComponent(ip)}`,
       { method: 'GET' },
     )
     const hit = await cache.match(key)
     const state = hit ? await hit.json().catch(() => null) : null
     const fresh =
-      state && state.resetAt > now ? state : { count: 0, resetAt: now + TAROT_WINDOW_MS }
+      state && state.resetAt > now ? state : { count: 0, resetAt: now + WINDOW_MS }
 
-    if (fresh.count >= TAROT_LIMIT) return limitMessage(fresh.resetAt)
+    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt)
 
     fresh.count += 1
     const ttl = Math.max(60, Math.ceil((fresh.resetAt - now) / 1000))
