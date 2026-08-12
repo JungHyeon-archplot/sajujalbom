@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { unlockAccess } from './claude.js'
+import { signInWithGoogle } from './supabase.js'
 
 const ACCESS_HINT = '동방 비밀번호'
 
@@ -149,11 +150,25 @@ function TarotMark() {
   )
 }
 
-export default function HomePage({ unlocked, onUnlocked, onSelect }) {
+export default function HomePage({
+  unlocked,
+  authReady,
+  session,
+  onUnlocked,
+  onSignOut,
+  onSelect,
+}) {
   const [password, setPassword] = useState('')
   const [unlocking, setUnlocking] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [showHint, setShowHint] = useState(false)
   const [error, setError] = useState('')
+
+  const userLabel =
+    session?.user?.user_metadata?.full_name ||
+    session?.user?.user_metadata?.name ||
+    session?.user?.email ||
+    ''
 
   async function handleUnlock() {
     if (!password.trim()) {
@@ -174,9 +189,24 @@ export default function HomePage({ unlocked, onUnlocked, onSelect }) {
     }
   }
 
+  async function handleGoogleSignIn() {
+    setGoogleLoading(true)
+    setError('')
+    try {
+      await signInWithGoogle()
+    } catch (err) {
+      console.error(err)
+      setError(
+        err?.message ||
+          'Google 로그인을 시작하지 못했습니다. Supabase Google provider 설정을 확인해 주세요.',
+      )
+      setGoogleLoading(false)
+    }
+  }
+
   function handleChoice(kind) {
     if (!unlocked) {
-      setError('비밀번호를 먼저 입력해 잠금을 해제해 주세요.')
+      setError('Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.')
       return
     }
     onSelect(kind)
@@ -218,6 +248,19 @@ export default function HomePage({ unlocked, onUnlocked, onSelect }) {
 
         {!unlocked ? (
           <div className="home-lock">
+            <button
+              type="button"
+              className="home-google-btn"
+              onClick={handleGoogleSignIn}
+              disabled={!authReady || googleLoading}
+            >
+              {googleLoading ? 'Google로 이동 중...' : 'Google로 로그인'}
+            </button>
+
+            <div className="home-lock-divider" aria-hidden="true">
+              <span>또는</span>
+            </div>
+
             <label htmlFor="homePassword">
               비밀번호
               <input
@@ -250,7 +293,18 @@ export default function HomePage({ unlocked, onUnlocked, onSelect }) {
             {showHint && <p className="home-hint">{ACCESS_HINT}</p>}
           </div>
         ) : (
-          <p className="home-unlocked">잠금이 해제되었습니다. 원하는 쪽을 선택하세요.</p>
+          <div className="home-unlocked-row">
+            <p className="home-unlocked">
+              {session
+                ? `${userLabel}님, 로그인되었습니다. 원하는 쪽을 선택하세요.`
+                : '잠금이 해제되었습니다. 원하는 쪽을 선택하세요.'}
+            </p>
+            {session && (
+              <button type="button" className="home-signout-btn" onClick={onSignOut}>
+                로그아웃
+              </button>
+            )}
+          </div>
         )}
 
         {error && <p className="home-error">{error}</p>}

@@ -1,5 +1,6 @@
 import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from './sajuPrompt.js'
 import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from './tarotPrompt.js'
+import { getAccessToken } from './supabase.js'
 
 const ACCESS_STORAGE_KEY = 'saju_access_password'
 
@@ -60,15 +61,18 @@ export async function unlockAccess(password) {
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
 async function requestReading({ system, user, failMessage, kind }) {
+  // 구글 로그인 또는 비밀번호, 둘 중 하나로 신원을 확인합니다.
   const password = getStoredAccessPassword()
-  if (!password) {
-    throw new Error('비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.')
+  const token = await getAccessToken().catch(() => '')
+
+  if (!password && !token) {
+    throw new Error('Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.')
   }
 
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password, system, user, kind }),
+    body: JSON.stringify({ password, token, system, user, kind }),
   })
 
   const raw = await response.text()

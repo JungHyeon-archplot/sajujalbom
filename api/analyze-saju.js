@@ -33,9 +33,6 @@ export default async function handler(req) {
   }
 
   const accessPassword = process.env.SAJU_ACCESS_PASSWORD?.trim()
-  if (!accessPassword) {
-    return jsonError(500, 'SAJU_ACCESS_PASSWORD가 Vercel 환경 변수에 없습니다.')
-  }
 
   let payload
   try {
@@ -44,8 +41,17 @@ export default async function handler(req) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  if (String(payload?.password ?? '').trim() !== accessPassword) {
-    return jsonError(401, '비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.')
+  // 비밀번호 또는 구글 로그인(Supabase 토큰) 둘 중 하나면 통과합니다.
+  const passwordOk =
+    Boolean(accessPassword) &&
+    String(payload?.password ?? '').trim() === accessPassword
+  const loginOk = passwordOk ? true : await verifySupabaseToken(payload?.token)
+
+  if (!loginOk) {
+    return jsonError(
+      401,
+      'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
+    )
   }
 
   if (!payload?.system || !payload?.user) {
@@ -139,6 +145,32 @@ function checkUsageLimit(kind, req) {
     }
   }
   return null
+}
+
+/** Supabase 액세스 토큰이 진짜인지 Supabase에 물어봅니다. */
+async function verifySupabaseToken(token) {
+  const jwt = String(token || '').trim()
+  if (!jwt) return false
+
+  const url = (
+    process.env.SUPABASE_URL ||
+    process.env.VITE_SUPABASE_URL ||
+    ''
+  ).replace(/\/$/, '')
+  const apikey =
+    process.env.SUPABASE_ANON_KEY ||
+    process.env.VITE_SUPABASE_ANON_KEY ||
+    process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !apikey) return false
+
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey, Authorization: `Bearer ${jwt}` },
+    })
+    return res.ok
+  } catch {
+    return false
+  }
 }
 
 /* ── 해석 기록 보관 (서버에서만 동작) ── */

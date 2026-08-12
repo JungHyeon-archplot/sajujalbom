@@ -31,8 +31,19 @@ export async function onRequestPost(context) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  if (String(payload?.password ?? '').trim() !== accessPassword) {
-    return jsonError(401, '비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.')
+  // 비밀번호 또는 구글 로그인(Supabase 토큰) 둘 중 하나면 통과합니다.
+  const passwordOk =
+    Boolean(accessPassword) &&
+    String(payload?.password ?? '').trim() === accessPassword
+  const loginOk = passwordOk
+    ? true
+    : await verifySupabaseToken(env, payload?.token)
+
+  if (!loginOk) {
+    return jsonError(
+      401,
+      'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
+    )
   }
 
   if (!payload?.system || !payload?.user) {
@@ -172,6 +183,28 @@ async function checkUsageLimit(kind, request, env, context) {
   } catch {
     // 제한 장치가 실패해도 서비스는 계속 되게 둡니다.
     return null
+  }
+}
+
+/** Supabase 액세스 토큰이 진짜인지 Supabase에 물어봅니다. */
+async function verifySupabaseToken(env, token) {
+  const jwt = String(token || '').trim()
+  if (!jwt) return false
+
+  const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
+  const apikey =
+    env.SUPABASE_ANON_KEY ||
+    env.VITE_SUPABASE_ANON_KEY ||
+    env.SUPABASE_SERVICE_ROLE_KEY
+  if (!url || !apikey) return false
+
+  try {
+    const res = await fetch(`${url}/auth/v1/user`, {
+      headers: { apikey, Authorization: `Bearer ${jwt}` },
+    })
+    return res.ok
+  } catch {
+    return false
   }
 }
 

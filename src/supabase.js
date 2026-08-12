@@ -14,6 +14,53 @@ if (!supabaseUrl || !supabaseKey) {
 export const supabase =
   supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null
 
+export async function getSession() {
+  if (!supabase) return null
+  const { data, error } = await supabase.auth.getSession()
+  if (error) throw error
+  return data.session ?? null
+}
+
+/** 로그인한 사용자의 액세스 토큰 (서버가 신원을 확인할 때 씁니다) */
+export async function getAccessToken() {
+  if (!supabase) return ''
+  const { data } = await supabase.auth.getSession()
+  return data?.session?.access_token || ''
+}
+
+export function onAuthStateChange(callback) {
+  if (!supabase) return () => {}
+
+  const {
+    data: { subscription },
+  } = supabase.auth.onAuthStateChange((_event, session) => {
+    callback(session)
+  })
+
+  return () => subscription.unsubscribe()
+}
+
+export async function signInWithGoogle() {
+  if (!supabase) {
+    throw new Error('Supabase가 설정되지 않았습니다. .env의 VITE_SUPABASE_URL / KEY를 확인하세요.')
+  }
+
+  const { error } = await supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: window.location.origin,
+    },
+  })
+
+  if (error) throw error
+}
+
+export async function signOut() {
+  if (!supabase) return
+  const { error } = await supabase.auth.signOut()
+  if (error) throw error
+}
+
 export async function listSajuReadings() {
   if (!supabase) return []
 
