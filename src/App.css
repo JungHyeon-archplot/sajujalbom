@@ -722,7 +722,8 @@ legend {
 
 .tarot-card {
   width: 62px;
-  height: 96px;
+  /* 타로 그림 비율(250:430)에 맞춰 잘림 없이 담습니다 */
+  aspect-ratio: 250 / 430;
   padding: 0;
   border: none;
   background: none;
@@ -789,13 +790,9 @@ legend {
 /* 카드 앞면 — 금테를 두른 타로 카드 형태 */
 .tarot-front {
   transform: rotateY(180deg);
-  justify-content: flex-start;
-  gap: 0.14rem;
-  padding: 0.26rem 0.2rem 0.22rem;
-  text-align: center;
-  background: linear-gradient(165deg, #fdfaf3 0%, #f2e9d8 100%);
+  padding: 0;
+  background: #fdfaf3;
   border: 1px solid rgba(140, 110, 45, 0.7);
-  box-shadow: inset 0 0 0 2px rgba(200, 170, 100, 0.35);
   color: #3d2f12;
 }
 
@@ -829,7 +826,7 @@ legend {
 .shuffle-card {
   position: absolute;
   width: 62px;
-  height: 96px;
+  aspect-ratio: 250 / 430;
   border-radius: 7px;
   background:
     repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.06) 0 4px, rgba(255, 255, 255, 0) 4px 8px),
@@ -857,18 +854,9 @@ legend {
 
 /* 그림 자리 — 역방향이면 뒤집힘 */
 .tarot-art {
-  position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 88%;
-  flex: 1 1 auto;
-  min-height: 0; /* 이미지가 카드 밖으로 밀려나 글자를 덮는 것을 막습니다 */
-  border: 1px solid rgba(160, 130, 60, 0.45);
-  border-radius: 3px;
-  background:
-    radial-gradient(circle at 50% 42%, rgba(232, 214, 160, 0.5) 0%, rgba(232, 214, 160, 0) 68%),
-    linear-gradient(180deg, #faf4e6 0%, #efe4cc 100%);
+  position: absolute;
+  inset: 0;
+  display: block;
   transition: transform 0.3s ease;
 }
 
@@ -879,23 +867,8 @@ legend {
 .tarot-art img {
   width: 100%;
   height: 100%;
-  object-fit: cover;
+  object-fit: contain;
   display: block;
-  border-radius: 2px;
-}
-
-.tarot-name {
-  flex: none;
-  width: 94%;
-  font-size: 0.6rem;
-  font-weight: 700;
-  line-height: 1.12;
-  word-break: keep-all;
-  /* 긴 이름은 두 줄까지만 (그림 자리가 알아서 줄어듭니다) */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
 }
 
 /* 타로 입력 폼 */
@@ -1174,21 +1147,15 @@ legend {
   }
 
   .tarot-card {
-    width: 84px;
-    height: 130px;
+    width: 88px;
   }
 
   .shuffle-card {
-    width: 84px;
-    height: 130px;
+    width: 88px;
   }
 
   .shuffle-stack {
-    height: 176px;
-  }
-
-  .tarot-name {
-    font-size: 0.72rem;
+    height: 186px;
   }
 
   .drawn-art {

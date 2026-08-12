@@ -166,14 +166,11 @@ export default function TarotPage({ onBack }) {
                       <span className="tarot-face tarot-back" />
                       <span className="tarot-face tarot-front">
                         {card && (
-                          <>
-                            <span
-                              className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
-                            >
-                              <img src={card.image} alt="" />
-                            </span>
-                            <span className="tarot-name">{card.name}</span>
-                          </>
+                          <span
+                            className={`tarot-art${card.reversed ? ' is-rev' : ''}`}
+                          >
+                            <img src={card.image} alt="" />
+                          </span>
                         )}
                       </span>
                     </span>
