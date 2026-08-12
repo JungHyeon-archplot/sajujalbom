@@ -6,6 +6,7 @@ import {
   getSajuReading,
   listSajuReadings,
   saveSajuReading,
+  updateSajuReading,
 } from './supabase.js'
 import { parseSajuSections, stripMarkdown } from './text.js'
 
@@ -69,9 +70,9 @@ function SajuResultView({ reading, resultText, saveNotice }) {
   )
 }
 
-/** 사주 입력 + 해석 화면 */
+/** 사주 입력 + 해석 화면 (CRUD: 생성/조회/수정/삭제) */
 export default function SajuPage({ onBack }) {
-  const [mode, setMode] = useState('create') // 'create' | 'view'
+  const [mode, setMode] = useState('create') // 'create' | 'view' | 'edit'
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('')
@@ -79,6 +80,7 @@ export default function SajuPage({ onBack }) {
   const [calendarType, setCalendarType] = useState('solar')
 
   const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
   const [readings, setReadings] = useState([])
@@ -88,9 +90,9 @@ export default function SajuPage({ onBack }) {
   const resultRef = useRef(null)
   const saveNoticeTimer = useRef(null)
 
-  const canAnalyze = Boolean(
-    name.trim() && birthDate && birthTime && gender && !loading,
-  )
+  const formReady = Boolean(name.trim() && birthDate && birthTime && gender)
+  const canAnalyze = formReady && !loading && !saving
+  const busy = loading || saving
 
   useEffect(() => {
     let cancelled = false
@@ -117,14 +119,24 @@ export default function SajuPage({ onBack }) {
     })
   }
 
-  function showSavedNotice() {
-    setSaveNotice('저장됨')
+  function showNotice(message) {
+    setSaveNotice(message)
     if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
     saveNoticeTimer.current = setTimeout(() => setSaveNotice(''), 2500)
   }
 
+  function applyReadingToForm(row) {
+    setSelectedReading(row)
+    setResult(stripMarkdown(row.result || ''))
+    setName(row.name || '')
+    setBirthDate(row.birth_date || '')
+    setBirthTime(formatBirthTime(row.birth_time))
+    setGender(row.gender || '')
+    setCalendarType(row.calendar_type || 'solar')
+  }
+
   async function handleSelectReading(id) {
-    if (loading) return
+    if (busy) return
 
     setError('')
     setSaveNotice('')
@@ -133,13 +145,7 @@ export default function SajuPage({ onBack }) {
 
     try {
       const row = await getSajuReading(id)
-      setSelectedReading(row)
-      setResult(stripMarkdown(row.result || ''))
-      setName(row.name || '')
-      setBirthDate(row.birth_date || '')
-      setBirthTime(formatBirthTime(row.birth_time))
-      setGender(row.gender || '')
-      setCalendarType(row.calendar_type || 'solar')
+      applyReadingToForm(row)
       scrollToResult()
     } catch (err) {
       console.error(err)
@@ -148,7 +154,7 @@ export default function SajuPage({ onBack }) {
   }
 
   function handleNewSaju() {
-    if (loading) return
+    if (busy) return
 
     setMode('create')
     setName('')
@@ -168,9 +174,25 @@ export default function SajuPage({ onBack }) {
     })
   }
 
+  function handleStartEdit() {
+    if (busy || !selectedId) return
+    setMode('edit')
+    setError('')
+    setSaveNotice('')
+    requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+      document.getElementById('name')?.focus()
+    })
+  }
+
+  function handleCancelEdit() {
+    if (busy || !selectedId) return
+    handleSelectReading(selectedId)
+  }
+
   async function handleDeleteReading(event, id, readingName) {
     event.stopPropagation()
-    if (loading) return
+    if (busy) return
 
     const ok = window.confirm(`「${readingName}」사주를 삭제할까요?`)
     if (!ok) return
@@ -188,19 +210,68 @@ export default function SajuPage({ onBack }) {
     }
   }
 
+  async function handleUpdateFields() {
+    if (!selectedId || !formReady || busy) {
+      setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
+      return
+    }
+
+    setSaving(true)
+    setError('')
+
+    try {
+      const updated = await updateSajuReading(selectedId, {
+        name: name.trim(),
+        birthDate,
+        birthTime,
+        gender,
+        calendarType,
+        result,
+      })
+
+      const nextReading = {
+        ...selectedReading,
+        id: selectedId,
+        name: name.trim(),
+        birth_date: birthDate,
+        birth_time: birthTime,
+        gender,
+        calendar_type: calendarType,
+        result,
+      }
+
+      setSelectedReading(nextReading)
+      setReadings((prev) =>
+        prev.map((row) => (row.id === selectedId ? { ...row, name: updated.name } : row)),
+      )
+      setMode('view')
+      showNotice('수정됨')
+      scrollToResult()
+    } catch (err) {
+      console.error(err)
+      setError(err?.message || '수정을 완료하지 못했습니다.')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function handleAnalyze() {
     if (!canAnalyze) {
       setError('이름, 생년월일, 태어난 시간, 성별을 모두 입력해 주세요.')
       return
     }
 
+    const editingId = mode === 'edit' ? selectedId : null
+
     setLoading(true)
     setError('')
     setResult('')
     setSaveNotice('')
-    setSelectedId(null)
-    setSelectedReading(null)
-    setMode('create')
+    if (!editingId) {
+      setSelectedId(null)
+      setSelectedReading(null)
+      setMode('create')
+    }
 
     try {
       const text = await analyzeSaju({
@@ -213,6 +284,7 @@ export default function SajuPage({ onBack }) {
       const cleaned = stripMarkdown(text)
       setResult(cleaned)
       setSelectedReading({
+        id: editingId || undefined,
         name: name.trim(),
         birth_date: birthDate,
         birth_time: birthTime,
@@ -222,21 +294,36 @@ export default function SajuPage({ onBack }) {
       scrollToResult()
 
       try {
-        const saved = await saveSajuReading({
+        const payload = {
           name: name.trim(),
           birthDate,
           birthTime,
           gender,
           calendarType,
           result: cleaned,
-        })
+        }
+
+        const saved = editingId
+          ? await updateSajuReading(editingId, payload)
+          : await saveSajuReading(payload)
+
         setSelectedId(saved.id)
         setMode('view')
-        setReadings((prev) => [saved, ...prev.filter((row) => row.id !== saved.id)])
-        showSavedNotice()
+        setReadings((prev) => {
+          const next = { id: saved.id, name: saved.name, created_at: saved.created_at }
+          if (editingId) {
+            return prev.map((row) => (row.id === saved.id ? next : row))
+          }
+          return [next, ...prev.filter((row) => row.id !== saved.id)]
+        })
+        showNotice(editingId ? '수정됨' : '저장됨')
       } catch (saveErr) {
         console.error(saveErr)
-        setError('해석은 완료됐지만 저장에 실패했습니다.')
+        setError(
+          editingId
+            ? '해석은 완료됐지만 수정 저장에 실패했습니다.'
+            : '해석은 완료됐지만 저장에 실패했습니다.',
+        )
       }
     } catch (err) {
       console.error(err)
@@ -247,13 +334,15 @@ export default function SajuPage({ onBack }) {
   }
 
   function handleFormKeyDown(event) {
-    if (event.key !== 'Enter' || mode !== 'create' || loading) return
+    if (event.key !== 'Enter' || busy) return
+    if (mode !== 'create' && mode !== 'edit') return
     if (event.target?.tagName === 'TEXTAREA') return
     event.preventDefault()
     if (canAnalyze) handleAnalyze()
   }
 
   const isViewMode = mode === 'view' && Boolean(result) && !loading
+  const showForm = mode === 'create' || mode === 'edit'
 
   return (
     <div className="app">
@@ -269,7 +358,7 @@ export default function SajuPage({ onBack }) {
           type="button"
           className="saju-new-btn"
           onClick={handleNewSaju}
-          disabled={loading}
+          disabled={busy}
         >
           새 사주 만들기
         </button>
@@ -287,7 +376,7 @@ export default function SajuPage({ onBack }) {
                       : 'saju-history-item'
                   }
                   onClick={() => handleSelectReading(row.id)}
-                  disabled={loading}
+                  disabled={busy}
                 >
                   {row.name}
                 </button>
@@ -296,7 +385,7 @@ export default function SajuPage({ onBack }) {
                   className="saju-history-delete"
                   aria-label={`${row.name} 삭제`}
                   onClick={(event) => handleDeleteReading(event, row.id, row.name)}
-                  disabled={loading}
+                  disabled={busy}
                 >
                   ×
                 </button>
@@ -312,13 +401,33 @@ export default function SajuPage({ onBack }) {
             ← 처음으로
           </button>
           {isViewMode && (
+            <div className="saju-top-actions-right">
+              <button
+                type="button"
+                className="saju-edit-btn"
+                onClick={handleStartEdit}
+                disabled={busy}
+              >
+                수정하기
+              </button>
+              <button
+                type="button"
+                className="saju-new-btn saju-new-btn-inline"
+                onClick={handleNewSaju}
+                disabled={busy}
+              >
+                새 사주 만들기
+              </button>
+            </div>
+          )}
+          {mode === 'edit' && (
             <button
               type="button"
-              className="saju-new-btn saju-new-btn-inline"
-              onClick={handleNewSaju}
-              disabled={loading}
+              className="back-btn"
+              onClick={handleCancelEdit}
+              disabled={busy}
             >
-              새 사주 만들기
+              수정 취소
             </button>
           )}
         </div>
@@ -327,111 +436,135 @@ export default function SajuPage({ onBack }) {
           <h1>저장된 사주</h1>
         ) : (
           <>
-            <h1>정보입력</h1>
-            <div className="saju-form" onKeyDown={handleFormKeyDown}>
-              <label className="field-wide" htmlFor="name">
-                이름
-                <input
-                  id="name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="이름을 입력하세요"
-                  disabled={loading}
-                />
-              </label>
+            <h1>{mode === 'edit' ? '사주 수정' : '정보입력'}</h1>
+            {showForm && (
+              <div className="saju-form" onKeyDown={handleFormKeyDown}>
+                <label className="field-wide" htmlFor="name">
+                  이름
+                  <input
+                    id="name"
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="이름을 입력하세요"
+                    disabled={busy}
+                  />
+                </label>
 
-              <label htmlFor="birthDate">
-                생년월일
-                <input
-                  id="birthDate"
-                  type="date"
-                  value={birthDate}
-                  onChange={(e) => setBirthDate(e.target.value)}
-                  disabled={loading}
-                />
-              </label>
+                <label htmlFor="birthDate">
+                  생년월일
+                  <input
+                    id="birthDate"
+                    type="date"
+                    value={birthDate}
+                    onChange={(e) => setBirthDate(e.target.value)}
+                    disabled={busy}
+                  />
+                </label>
 
-              <label htmlFor="birthTime">
-                태어난 시간
-                <input
-                  id="birthTime"
-                  type="time"
-                  value={birthTime}
-                  onChange={(e) => setBirthTime(e.target.value)}
-                  disabled={loading}
-                />
-              </label>
+                <label htmlFor="birthTime">
+                  태어난 시간
+                  <input
+                    id="birthTime"
+                    type="time"
+                    value={birthTime}
+                    onChange={(e) => setBirthTime(e.target.value)}
+                    disabled={busy}
+                  />
+                </label>
 
-              <div className="field">
-                <span className="field-label">성별</span>
-                <div className="radio-row">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="male"
-                      checked={gender === 'male'}
-                      onChange={(e) => setGender(e.target.value)}
-                      disabled={loading}
-                    />
-                    남성
-                  </label>
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="gender"
-                      value="female"
-                      checked={gender === 'female'}
-                      onChange={(e) => setGender(e.target.value)}
-                      disabled={loading}
-                    />
-                    여성
-                  </label>
+                <div className="field">
+                  <span className="field-label">성별</span>
+                  <div className="radio-row">
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="male"
+                        checked={gender === 'male'}
+                        onChange={(e) => setGender(e.target.value)}
+                        disabled={busy}
+                      />
+                      남성
+                    </label>
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="gender"
+                        value="female"
+                        checked={gender === 'female'}
+                        onChange={(e) => setGender(e.target.value)}
+                        disabled={busy}
+                      />
+                      여성
+                    </label>
+                  </div>
+                </div>
+
+                <div className="field">
+                  <span className="field-label">양력 / 음력</span>
+                  <div className="radio-row">
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="calendarType"
+                        value="solar"
+                        checked={calendarType === 'solar'}
+                        onChange={(e) => setCalendarType(e.target.value)}
+                        disabled={busy}
+                      />
+                      양력
+                    </label>
+                    <label className="radio-label">
+                      <input
+                        type="radio"
+                        name="calendarType"
+                        value="lunar"
+                        checked={calendarType === 'lunar'}
+                        onChange={(e) => setCalendarType(e.target.value)}
+                        disabled={busy}
+                      />
+                      음력
+                    </label>
+                  </div>
                 </div>
               </div>
+            )}
 
-              <div className="field">
-                <span className="field-label">양력 / 음력</span>
-                <div className="radio-row">
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="calendarType"
-                      value="solar"
-                      checked={calendarType === 'solar'}
-                      onChange={(e) => setCalendarType(e.target.value)}
-                      disabled={loading}
-                    />
-                    양력
-                  </label>
-                  <label className="radio-label">
-                    <input
-                      type="radio"
-                      name="calendarType"
-                      value="lunar"
-                      checked={calendarType === 'lunar'}
-                      onChange={(e) => setCalendarType(e.target.value)}
-                      disabled={loading}
-                    />
-                    음력
-                  </label>
-                </div>
+            {mode === 'edit' ? (
+              <div className="saju-edit-actions">
+                <button
+                  type="button"
+                  className="analyze-btn analyze-btn-secondary"
+                  onClick={handleUpdateFields}
+                  disabled={!formReady || busy}
+                >
+                  {saving ? '저장 중...' : '변경 저장'}
+                </button>
+                <button
+                  type="button"
+                  className="analyze-btn"
+                  onClick={handleAnalyze}
+                  disabled={!canAnalyze}
+                >
+                  {loading ? '해석 중...' : '다시 해석 후 저장'}
+                </button>
               </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                className="analyze-btn"
+                onClick={handleAnalyze}
+                disabled={!canAnalyze}
+              >
+                {loading ? '해석 중...' : '사주 해석하기'}
+              </button>
+            )}
 
-            <button
-              type="button"
-              className="analyze-btn"
-              onClick={handleAnalyze}
-              disabled={!canAnalyze}
-            >
-              {loading ? '해석 중...' : '사주 해석하기'}
-            </button>
-
-            {!canAnalyze && !loading && (
+            {!formReady && !busy && (
               <p className="saju-form-hint">
-                이름, 생년월일, 태어난 시간, 성별을 입력하면 해석할 수 있습니다.
+                이름, 생년월일, 태어난 시간, 성별을 입력하면{' '}
+                {mode === 'edit' ? '수정할' : '해석할'} 수 있습니다.
               </p>
             )}
           </>

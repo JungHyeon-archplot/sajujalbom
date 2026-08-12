@@ -67,6 +67,50 @@
   gap: 0.75rem;
 }
 
+.saju-top-actions-right {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.saju-edit-btn {
+  padding: 0.35rem 0.7rem;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+  color: #1a1a1a;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saju-edit-btn:hover:not(:disabled) {
+  background: #fff;
+}
+
+.saju-edit-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.saju-edit-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.analyze-btn-secondary {
+  color: #1a1a1a;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+}
+
+.analyze-btn-secondary:hover:not(:disabled) {
+  background: #fff;
+}
+
 .saju-history-empty {
   margin: 0;
   color: #666;

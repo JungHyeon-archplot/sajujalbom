@@ -61,6 +61,32 @@ export async function saveSajuReading(input) {
   return data
 }
 
+export async function updateSajuReading(id, input) {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
+
+  const payload = {
+    name: input.name,
+    birth_date: input.birthDate,
+    birth_time: input.birthTime,
+    gender: input.gender,
+    calendar_type: input.calendarType,
+  }
+
+  if (input.result !== undefined) {
+    payload.result = input.result
+  }
+
+  const { data, error } = await supabase
+    .from('saju_readings')
+    .update(payload)
+    .eq('id', id)
+    .select('id, name, created_at')
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function deleteSajuReading(id) {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
