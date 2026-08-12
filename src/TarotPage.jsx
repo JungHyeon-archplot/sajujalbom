@@ -173,11 +173,6 @@ export default function TarotPage({ onBack }) {
                               <img src={card.image} alt="" />
                             </span>
                             <span className="tarot-name">{card.name}</span>
-                            <span
-                              className={`tarot-dir${card.reversed ? ' is-rev' : ''}`}
-                            >
-                              {card.orientation}
-                            </span>
                           </>
                         )}
                       </span>
