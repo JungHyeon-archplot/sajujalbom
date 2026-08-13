@@ -155,7 +155,9 @@ export default function HomePage({
   authReady,
   session,
   onUnlocked,
+  profile,
   onSignOut,
+  onEditProfile,
   onSelect,
 }) {
   const [password, setPassword] = useState('')
@@ -296,13 +298,26 @@ export default function HomePage({
           <div className="home-unlocked-row">
             <p className="home-unlocked">
               {session
-                ? `${userLabel}님, 로그인되었습니다. 원하는 쪽을 선택하세요.`
+                ? `${profile?.name || userLabel}님, 로그인되었습니다. 원하는 쪽을 선택하세요.`
                 : '잠금이 해제되었습니다. 원하는 쪽을 선택하세요.'}
             </p>
             {session && (
-              <button type="button" className="home-signout-btn" onClick={onSignOut}>
-                로그아웃
-              </button>
+              <div className="home-account-actions">
+                <button
+                  type="button"
+                  className="home-signout-btn"
+                  onClick={onEditProfile}
+                >
+                  내 정보
+                </button>
+                <button
+                  type="button"
+                  className="home-signout-btn"
+                  onClick={onSignOut}
+                >
+                  로그아웃
+                </button>
+              </div>
             )}
           </div>
         )}

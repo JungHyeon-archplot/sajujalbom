@@ -3,6 +3,7 @@ import dragonBg from './assets/dragon-bg.png'
 import { analyzeSaju } from './claude.js'
 import {
   deleteSajuReading,
+  getMyProfile,
   getSajuReading,
   listSajuReadings,
   saveSajuReading,
@@ -87,6 +88,7 @@ export default function SajuPage({ onBack }) {
   const [selectedId, setSelectedId] = useState(null)
   const [selectedReading, setSelectedReading] = useState(null)
   const [saveNotice, setSaveNotice] = useState('')
+  const [profileLoaded, setProfileLoaded] = useState(false)
   const resultRef = useRef(null)
   const saveNoticeTimer = useRef(null)
 
@@ -106,7 +108,24 @@ export default function SajuPage({ onBack }) {
       }
     }
 
+    // 저장해 둔 생년월일이 있으면 입력창을 미리 채워 둡니다.
+    async function loadProfile() {
+      try {
+        const profile = await getMyProfile()
+        if (!profile || cancelled) return
+        setName((prev) => prev || profile.name)
+        setBirthDate((prev) => prev || profile.birthDate)
+        setBirthTime((prev) => prev || profile.birthTime)
+        setGender((prev) => prev || profile.gender)
+        if (profile.calendarType) setCalendarType(profile.calendarType)
+        setProfileLoaded(Boolean(profile.birthDate))
+      } catch (err) {
+        console.error(err)
+      }
+    }
+
     loadReadings()
+    loadProfile()
     return () => {
       cancelled = true
       if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
@@ -565,6 +584,12 @@ export default function SajuPage({ onBack }) {
               <p className="saju-form-hint">
                 이름, 생년월일, 태어난 시간, 성별을 입력하면{' '}
                 {mode === 'edit' ? '수정할' : '해석할'} 수 있습니다.
+              </p>
+            )}
+
+            {profileLoaded && formReady && mode === 'create' && !busy && (
+              <p className="saju-form-hint">
+                저장해 둔 정보를 불러왔습니다. 바뀐 내용이 있으면 고치면 됩니다.
               </p>
             )}
           </>

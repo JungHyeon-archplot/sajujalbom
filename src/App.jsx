@@ -3,7 +3,14 @@ import HomePage from './HomePage.jsx'
 import SajuPage from './SajuPage.jsx'
 import TarotPage from './TarotPage.jsx'
 import { getStoredAccessPassword } from './claude.js'
-import { getSession, onAuthStateChange, signOut } from './supabase.js'
+import ProfileModal from './ProfileModal.jsx'
+import { isProfileComplete } from './profile.js'
+import {
+  getMyProfile,
+  getSession,
+  onAuthStateChange,
+  signOut,
+} from './supabase.js'
 import './App.css'
 
 export default function App() {
@@ -14,7 +21,34 @@ export default function App() {
     Boolean(getStoredAccessPassword()),
   )
 
+  const [profile, setProfile] = useState(null)
+  const [showProfile, setShowProfile] = useState(false)
+
   const unlocked = Boolean(session) || passwordUnlocked
+
+  // 로그인했는데 저장된 정보가 없으면 먼저 입력받습니다.
+  useEffect(() => {
+    if (!session) {
+      setProfile(null)
+      setShowProfile(false)
+      return undefined
+    }
+
+    let active = true
+    getMyProfile()
+      .then((next) => {
+        if (!active) return
+        setProfile(next)
+        if (!isProfileComplete(next)) setShowProfile(true)
+      })
+      .catch((err) => {
+        console.error(err)
+      })
+
+    return () => {
+      active = false
+    }
+  }, [session])
 
   useEffect(() => {
     let active = true
@@ -50,22 +84,48 @@ export default function App() {
     setSession(null)
   }
 
+  const modal = showProfile ? (
+    <ProfileModal
+      profile={profile}
+      onSaved={(next) => {
+        setProfile(next)
+        setShowProfile(false)
+      }}
+      onClose={() => setShowProfile(false)}
+    />
+  ) : null
+
   if (view === 'saju') {
-    return <SajuPage onBack={() => setView('home')} />
+    return (
+      <>
+        <SajuPage onBack={() => setView('home')} />
+        {modal}
+      </>
+    )
   }
 
   if (view === 'tarot') {
-    return <TarotPage onBack={() => setView('home')} />
+    return (
+      <>
+        <TarotPage onBack={() => setView('home')} />
+        {modal}
+      </>
+    )
   }
 
   return (
-    <HomePage
-      unlocked={unlocked}
-      authReady={authReady}
-      session={session}
-      onUnlocked={() => setPasswordUnlocked(true)}
-      onSignOut={handleSignOut}
-      onSelect={setView}
-    />
+    <>
+      <HomePage
+        unlocked={unlocked}
+        authReady={authReady}
+        session={session}
+        profile={profile}
+        onUnlocked={() => setPasswordUnlocked(true)}
+        onSignOut={handleSignOut}
+        onEditProfile={() => setShowProfile(true)}
+        onSelect={setView}
+      />
+      {modal}
+    </>
   )
 }

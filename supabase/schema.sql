@@ -36,6 +36,66 @@ alter table public.tarot_readings
   references auth.users(id) on delete set null;
 
 -- ─────────────────────────────────────────────
+-- 2-1. 사용자 정보 테이블
+--      생년월일 같은 "사람에 대한 정보"는 여기 한 번만 저장하고,
+--      해석 기록(saju_readings)은 결과만 남긴 뒤 user_id로 연결합니다.
+-- ─────────────────────────────────────────────
+create table if not exists public.users (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  name text,
+  birth_date date,
+  birth_time time,
+  gender text,
+  calendar_type text not null default 'solar',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+-- 이미 쌓인 사주 기록에서 사람 정보를 옮겨 옵니다(계정당 가장 최근 것).
+insert into public.users (user_id, name, birth_date, birth_time, gender, calendar_type)
+select distinct on (user_id)
+  user_id,
+  nullif(btrim(name::text), ''),
+  nullif(btrim(birth_date::text), '')::date,
+  nullif(btrim(birth_time::text), '')::time,
+  nullif(btrim(gender::text), ''),
+  coalesce(nullif(btrim(calendar_type::text), ''), 'solar')
+from public.saju_readings
+where user_id is not null
+order by user_id, created_at desc
+on conflict (user_id) do nothing;
+
+-- 해석 기록 ↔ 사용자 정보 연결 (PostgREST가 조인해서 읽을 수 있게)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'saju_readings_profile_fk'
+  ) then
+    alter table public.saju_readings
+      add constraint saju_readings_profile_fk
+      foreign key (user_id) references public.users(user_id) on delete cascade;
+  end if;
+end $$;
+
+alter table public.users enable row level security;
+
+drop policy if exists "users_select" on public.users;
+create policy "users_select" on public.users
+  for select
+  using (user_id = auth.uid() or public.is_master());
+
+drop policy if exists "users_insert" on public.users;
+create policy "users_insert" on public.users
+  for insert
+  with check (user_id = auth.uid());
+
+drop policy if exists "users_update" on public.users;
+create policy "users_update" on public.users
+  for update
+  using (user_id = auth.uid() or public.is_master())
+  with check (user_id = auth.uid() or public.is_master());
+
+-- ─────────────────────────────────────────────
 -- 3. 사주: 본인 것만, 마스터는 전부
 -- ─────────────────────────────────────────────
 alter table public.saju_readings enable row level security;
@@ -76,4 +136,16 @@ alter table public.tarot_readings enable row level security;
 -- select tablename, rowsecurity from pg_tables
 --   where tablename in ('saju_readings', 'tarot_readings');
 -- select tablename, policyname from pg_policies
---   where tablename in ('saju_readings', 'tarot_readings');
+--   where tablename in ('users', 'saju_readings', 'tarot_readings');
+-- select * from public.users;
+
+-- ─────────────────────────────────────────────
+-- 6. (선택) 정리
+--    사람 정보가 users로 옮겨졌는지 확인한 뒤에 실행하세요. 되돌릴 수 없습니다.
+--    비로그인(비밀번호) 기록은 name 컬럼을 계속 쓰므로 name은 남겨 둡니다.
+-- ─────────────────────────────────────────────
+-- alter table public.saju_readings
+--   drop column if exists birth_date,
+--   drop column if exists birth_time,
+--   drop column if exists gender,
+--   drop column if exists calendar_type;
