@@ -1083,6 +1083,141 @@ legend {
   }
 }
 
+/* ── 결과 화면 떠도는 묘선 ── */
+.wander-cat {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 40;
+  width: 92px;
+  pointer-events: none;
+  will-change: transform;
+  transition: transform 4.8s cubic-bezier(0.42, 0, 0.2, 1);
+}
+
+.wander-bubble {
+  position: absolute;
+  right: 0;
+  bottom: 100%;
+  width: max-content;
+  max-width: 11.5rem;
+  margin: 0 0 0.35rem;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid #caa64a;
+  border-radius: 12px 12px 4px 12px;
+  background: rgba(10, 24, 46, 0.94);
+  color: #f2e3bb;
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.4;
+  word-break: keep-all;
+  pointer-events: none;
+  box-shadow: 0 8px 20px rgba(4, 12, 28, 0.35);
+}
+
+.wander-cat.is-left .wander-bubble {
+  right: auto;
+  left: 0;
+  border-radius: 12px 12px 12px 4px;
+}
+
+.wander-dismiss,
+.wander-pet {
+  pointer-events: auto;
+}
+
+.wander-dismiss {
+  position: absolute;
+  top: -0.15rem;
+  right: -0.15rem;
+  z-index: 1;
+  width: 1.35rem;
+  height: 1.35rem;
+  padding: 0;
+  border: 1px solid rgba(240, 217, 140, 0.55);
+  border-radius: 999px;
+  background: rgba(10, 24, 46, 0.88);
+  color: #f2e3bb;
+  font-size: 0.95rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.wander-dismiss:hover {
+  background: #1b4a63;
+}
+
+.wander-pet {
+  display: block;
+  width: 92px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.wander-body {
+  display: block;
+  transform-origin: center;
+}
+
+.mascot-buddy {
+  width: 92px;
+  filter: drop-shadow(0 6px 14px rgba(4, 12, 28, 0.4));
+}
+
+.wander-cat.is-walking .mascot-buddy {
+  animation: wander-waddle 0.5s ease-in-out infinite;
+}
+
+.wander-cat.is-hop .mascot-buddy {
+  animation: wander-hop 0.42s ease-out;
+}
+
+@keyframes wander-waddle {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-5px) rotate(2deg);
+  }
+}
+
+@keyframes wander-hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  40% {
+    transform: translateY(-10px);
+  }
+}
+
+@media (max-width: 699px) {
+  .wander-cat,
+  .wander-pet,
+  .mascot-buddy {
+    width: 76px;
+  }
+
+  .wander-bubble {
+    max-width: 9.5rem;
+    font-size: 0.72rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wander-cat {
+    transition: none;
+  }
+
+  .wander-cat.is-walking .mascot-buddy,
+  .wander-cat.is-hop .mascot-buddy {
+    animation: none;
+  }
+}
+
 /* ── 토스트 안내 ── */
 .toast-layer {
   position: fixed;

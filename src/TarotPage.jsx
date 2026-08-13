@@ -3,6 +3,7 @@ import { analyzeTarot } from './claude.js'
 import { fetchAdminRecords, groupByName } from './admin.js'
 import { FAN_SIZE, SPREAD, describeCard, drawCardIds } from './tarotDeck.js'
 import Toast from './Toast.jsx'
+import WanderingCat from './WanderingCat.jsx'
 import { stripMarkdown } from './text.js'
 import { useToast } from './useToast.js'
 
@@ -286,7 +287,7 @@ export default function TarotPage({ onBack }) {
         {phase === 'reading' && (
           <div className="tarot-reading" aria-busy="true" aria-live="polite">
             <CrystalBall />
-            <p className="tarot-reading-text">구슬 속에서 답을 찾는 중…</p>
+            <p className="tarot-reading-text">묘선이 구슬을 들여다보는 중이다냥…</p>
           </div>
         )}
 
@@ -328,6 +329,13 @@ export default function TarotPage({ onBack }) {
           </>
         )}
       </div>
+
+      {(phase === 'reading' || phase === 'done') && (
+        <WanderingCat
+          kind="tarot"
+          mood={phase === 'reading' ? 'waiting' : 'reading'}
+        />
+      )}
 
       <Toast toast={toast} />
     </div>

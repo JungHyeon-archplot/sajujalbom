@@ -10,6 +10,7 @@ import {
   updateSajuReading,
 } from './supabase.js'
 import Toast from './Toast.jsx'
+import WanderingCat from './WanderingCat.jsx'
 import { parseSajuSections, stripMarkdown } from './text.js'
 import { useToast } from './useToast.js'
 
@@ -606,7 +607,7 @@ export default function SajuPage({ onBack }) {
 
         {loading && (
           <div className="result skeleton" aria-busy="true" aria-live="polite">
-            <p className="skeleton-status">사주를 읽고 있습니다…</p>
+            <p className="skeleton-status">묘선이 명식을 펼치는 중이다냥…</p>
             <div className="skeleton-block">
               <div className="skeleton-line title" />
               <div className="skeleton-line short" />
@@ -640,6 +641,14 @@ export default function SajuPage({ onBack }) {
           </div>
         )}
       </div>
+
+      {(loading || result) && (
+        <WanderingCat
+          kind="saju"
+          mood={loading ? 'waiting' : 'reading'}
+          avoidSidebar
+        />
+      )}
 
       <Toast toast={toast} />
     </div>
