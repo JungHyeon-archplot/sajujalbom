@@ -990,6 +990,99 @@ legend {
   animation: sparkle 4.2s ease-in-out infinite;
 }
 
+/* ── 마스코트 ── */
+.mascot {
+  display: block;
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 8px 20px rgba(4, 12, 28, 0.45));
+}
+
+.mascot-home {
+  width: 176px;
+  margin: 0 auto -0.35rem;
+  animation: mascot-float 5.5s ease-in-out infinite;
+}
+
+.mascot-halo {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-halo 4.2s ease-in-out infinite;
+}
+
+/* 가끔 눈을 깜빡입니다 */
+.mascot-eyes {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: mascot-blink 6.5s ease-in-out infinite;
+}
+
+.mascot-clouds path {
+  animation: mascot-drift 9s ease-in-out infinite alternate;
+}
+
+.mascot-clouds path:nth-child(even) {
+  animation-duration: 12s;
+  animation-direction: alternate-reverse;
+}
+
+@keyframes mascot-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes mascot-halo {
+  0%,
+  100% {
+    opacity: 0.75;
+    transform: scale(0.97);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes mascot-blink {
+  0%,
+  92%,
+  100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.08);
+  }
+}
+
+@keyframes mascot-drift {
+  from {
+    transform: translateX(-4px);
+  }
+  to {
+    transform: translateX(4px);
+  }
+}
+
+@media (min-width: 700px) {
+  .mascot-home {
+    width: 216px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mascot-home,
+  .mascot-halo,
+  .mascot-eyes,
+  .mascot-clouds path {
+    animation: none;
+  }
+}
+
 /* ── 토스트 안내 ── */
 .toast-layer {
   position: fixed;

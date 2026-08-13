@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import MascotCat from './MascotCat.jsx'
 import { signInWithGoogle } from './supabase.js'
 
 /** 현무(북방·물·거북과 뱀)를 청나라풍 청색 + 금색 바람선으로 표현한 배경 */
@@ -194,6 +195,7 @@ export default function HomePage({
 
       <div className="home-content">
         <header className="home-head">
+          <MascotCat className="mascot-home" />
           <h1>사주잘봄</h1>
           <p>오늘은 무엇을 보러 오셨나요</p>
         </header>
