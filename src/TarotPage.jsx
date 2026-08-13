@@ -2,7 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { analyzeTarot } from './claude.js'
 import { fetchAdminRecords, groupByName } from './admin.js'
 import { FAN_SIZE, SPREAD, describeCard, drawCardIds } from './tarotDeck.js'
+import Toast from './Toast.jsx'
 import { stripMarkdown } from './text.js'
+import { useToast } from './useToast.js'
 
 /** 마스터 계정에게만 보이는 기록 패널 */
 function RecordPanel({ records }) {
@@ -94,6 +96,7 @@ export default function TarotPage({ onBack }) {
   const [error, setError] = useState('')
   // 마스터 계정이 아니면 서버가 거절해서 계속 null로 남습니다.
   const [records, setRecords] = useState(null)
+  const { toast, showToast } = useToast()
 
   useEffect(() => {
     let active = true
@@ -115,7 +118,15 @@ export default function TarotPage({ onBack }) {
   }, [phase])
 
   function handlePick(slot) {
-    if (phase !== 'pick' || picked.includes(slot) || done) return
+    if (phase !== 'pick') return
+    if (picked.includes(slot)) {
+      showToast('이미 고른 카드예요.')
+      return
+    }
+    if (done) {
+      showToast(`카드는 ${SPREAD.length}장까지만 고를 수 있어요.`)
+      return
+    }
     setPicked((prev) => [...prev, slot])
   }
 
@@ -153,6 +164,7 @@ export default function TarotPage({ onBack }) {
   }
 
   function handleReset() {
+    showToast('카드를 다시 섞을게요.')
     setDrawn(drawCardIds(SPREAD.length))
     setPicked([])
     setResult('')
@@ -238,7 +250,7 @@ export default function TarotPage({ onBack }) {
                     type="button"
                     className={`tarot-card${card ? ' is-picked' : ''}`}
                     onClick={() => handlePick(slot)}
-                    disabled={phase !== 'pick' || (done && !card)}
+                    disabled={phase !== 'pick'}
                     aria-label={card ? card.display : `카드 ${slot + 1}`}
                   >
                     <span className="tarot-card-inner">
@@ -316,6 +328,8 @@ export default function TarotPage({ onBack }) {
           </>
         )}
       </div>
+
+      <Toast toast={toast} />
     </div>
   )
 }

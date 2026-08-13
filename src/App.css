@@ -951,9 +951,30 @@ legend {
   inset: 0;
   z-index: 0;
   background:
-    radial-gradient(80% 55% at 50% 26%, rgba(180, 132, 246, 0.28) 0%, rgba(88, 44, 156, 0) 62%),
-    radial-gradient(120% 90% at 50% 100%, rgba(20, 8, 36, 0.9) 0%, rgba(20, 8, 36, 0) 60%),
-    linear-gradient(165deg, #3d2168 0%, #2a1449 48%, #1a0c30 100%);
+    /* 벨벳 결이 빛을 받는 자리 */
+    radial-gradient(70% 45% at 50% 14%, rgba(214, 176, 255, 0.26) 0%, rgba(214, 176, 255, 0) 62%),
+    radial-gradient(60% 45% at 14% 34%, rgba(168, 116, 240, 0.2) 0%, rgba(168, 116, 240, 0) 66%),
+    radial-gradient(60% 45% at 88% 68%, rgba(126, 74, 196, 0.24) 0%, rgba(126, 74, 196, 0) 66%),
+    /* 가장자리로 갈수록 어두워지는 천의 그늘 */
+    radial-gradient(135% 105% at 50% 48%, rgba(12, 4, 28, 0) 38%, rgba(10, 3, 24, 0.82) 100%),
+    linear-gradient(168deg, #4a2a7c 0%, #351b5e 46%, #1d0e38 100%);
+}
+
+/* 천의 미세한 올과 결(파일) — 벨벳 특유의 잔결 */
+.tarot-table::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    repeating-linear-gradient(
+      92deg,
+      rgba(255, 255, 255, 0.028) 0 1px,
+      rgba(0, 0, 0, 0.03) 1px 3px
+    ),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='v'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23v)' opacity='0.42'/%3E%3C/svg%3E");
+  mix-blend-mode: overlay;
+  opacity: 0.55;
+  pointer-events: none;
 }
 
 .tarot-table::after {
@@ -967,6 +988,64 @@ legend {
     radial-gradient(circle at 24% 62%, rgba(255, 255, 255, 0.5) 0.7px, transparent 1.3px),
     radial-gradient(circle at 52% 88%, rgba(255, 255, 255, 0.45) 0.8px, transparent 1.4px);
   animation: sparkle 4.2s ease-in-out infinite;
+}
+
+/* ── 토스트 안내 ── */
+.toast-layer {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: max(1.5rem, env(safe-area-inset-bottom));
+  z-index: 60;
+  display: flex;
+  justify-content: center;
+  padding: 0 1rem;
+  pointer-events: none;
+}
+
+.toast {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  max-width: 22rem;
+  padding: 0.7rem 1.05rem;
+  border-radius: 999px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  line-height: 1.4;
+  color: #f7f1e4;
+  word-break: keep-all;
+  background: rgba(24, 18, 10, 0.92);
+  border: 1px solid rgba(240, 217, 140, 0.28);
+  box-shadow: 0 10px 28px rgba(4, 10, 22, 0.35);
+  backdrop-filter: blur(8px);
+  animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+}
+
+.toast-dot {
+  width: 6px;
+  height: 6px;
+  flex: none;
+  border-radius: 50%;
+  background: #f0d98c;
+  box-shadow: 0 0 8px rgba(240, 217, 140, 0.8);
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }
 
 /* ── 내 정보 모달 ── */

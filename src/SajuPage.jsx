@@ -9,7 +9,9 @@ import {
   saveSajuReading,
   updateSajuReading,
 } from './supabase.js'
+import Toast from './Toast.jsx'
 import { parseSajuSections, stripMarkdown } from './text.js'
+import { useToast } from './useToast.js'
 
 function formatBirthTime(value) {
   if (!value) return ''
@@ -28,7 +30,7 @@ function calendarLabel(value) {
   return ''
 }
 
-function SajuResultView({ reading, resultText, saveNotice }) {
+function SajuResultView({ reading, resultText }) {
   const sections = parseSajuSections(resultText)
   const metaBits = [
     reading?.birth_date,
@@ -45,7 +47,6 @@ function SajuResultView({ reading, resultText, saveNotice }) {
           {metaBits.length > 0 && (
             <p className="result-meta">{metaBits.join(' · ')}</p>
           )}
-          {saveNotice && <p className="result-save-notice">{saveNotice}</p>}
         </header>
       )}
 
@@ -87,10 +88,10 @@ export default function SajuPage({ onBack }) {
   const [readings, setReadings] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [selectedReading, setSelectedReading] = useState(null)
-  const [saveNotice, setSaveNotice] = useState('')
+  const { toast, showToast } = useToast()
   const [profileLoaded, setProfileLoaded] = useState(false)
+  const [savedProfile, setSavedProfile] = useState(null)
   const resultRef = useRef(null)
-  const saveNoticeTimer = useRef(null)
 
   const formReady = Boolean(name.trim() && birthDate && birthTime && gender)
   const canAnalyze = formReady && !loading && !saving
@@ -118,6 +119,7 @@ export default function SajuPage({ onBack }) {
         setBirthTime((prev) => prev || profile.birthTime)
         setGender((prev) => prev || profile.gender)
         if (profile.calendarType) setCalendarType(profile.calendarType)
+        setSavedProfile(profile)
         setProfileLoaded(Boolean(profile.birthDate))
       } catch (err) {
         console.error(err)
@@ -128,7 +130,6 @@ export default function SajuPage({ onBack }) {
     loadProfile()
     return () => {
       cancelled = true
-      if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
     }
   }, [])
 
@@ -136,12 +137,6 @@ export default function SajuPage({ onBack }) {
     requestAnimationFrame(() => {
       resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
     })
-  }
-
-  function showNotice(message) {
-    setSaveNotice(message)
-    if (saveNoticeTimer.current) clearTimeout(saveNoticeTimer.current)
-    saveNoticeTimer.current = setTimeout(() => setSaveNotice(''), 2500)
   }
 
   function applyReadingToForm(row) {
@@ -158,7 +153,6 @@ export default function SajuPage({ onBack }) {
     if (busy) return
 
     setError('')
-    setSaveNotice('')
     setSelectedId(id)
     setMode('view')
 
@@ -173,19 +167,34 @@ export default function SajuPage({ onBack }) {
   }
 
   function handleNewSaju() {
-    if (busy) return
+    if (busy) {
+      showToast('해석이 끝난 뒤에 눌러 주세요.')
+      return
+    }
+
+    // 이미 비어 있는 새 화면이면 눌러도 바뀌는 게 없어 그 사실을 알려줍니다.
+    if (mode === 'create' && !result && !selectedId) {
+      showToast('이미 새 사주 화면이에요.')
+      return
+    }
 
     setMode('create')
-    setName('')
-    setBirthDate('')
-    setBirthTime('')
-    setGender('')
-    setCalendarType('solar')
+    // 저장해 둔 내 정보로 되돌려 두면 바로 해석을 누를 수 있습니다.
+    setName(savedProfile?.name || '')
+    setBirthDate(savedProfile?.birthDate || '')
+    setBirthTime(savedProfile?.birthTime || '')
+    setGender(savedProfile?.gender || '')
+    setCalendarType(savedProfile?.calendarType || 'solar')
     setResult('')
     setError('')
-    setSaveNotice('')
     setSelectedId(null)
     setSelectedReading(null)
+
+    showToast(
+      savedProfile?.birthDate
+        ? '새 사주 화면이에요. 저장된 정보를 채워 뒀습니다.'
+        : '새 사주 화면이에요.',
+    )
 
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -197,7 +206,6 @@ export default function SajuPage({ onBack }) {
     if (busy || !selectedId) return
     setMode('edit')
     setError('')
-    setSaveNotice('')
     requestAnimationFrame(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' })
       document.getElementById('name')?.focus()
@@ -264,7 +272,7 @@ export default function SajuPage({ onBack }) {
         prev.map((row) => (row.id === selectedId ? { ...row, name: updated.name } : row)),
       )
       setMode('view')
-      showNotice('수정됨')
+      showToast('수정됨')
       scrollToResult()
     } catch (err) {
       console.error(err)
@@ -285,7 +293,6 @@ export default function SajuPage({ onBack }) {
     setLoading(true)
     setError('')
     setResult('')
-    setSaveNotice('')
     if (!editingId) {
       setSelectedId(null)
       setSelectedReading(null)
@@ -335,7 +342,7 @@ export default function SajuPage({ onBack }) {
           }
           return [next, ...prev.filter((row) => row.id !== saved.id)]
         })
-        showNotice(editingId ? '수정됨' : '저장됨')
+        showToast(editingId ? '수정됨' : '저장됨')
       } catch (saveErr) {
         console.error(saveErr)
         setError(
@@ -629,11 +636,12 @@ export default function SajuPage({ onBack }) {
             <SajuResultView
               reading={selectedReading}
               resultText={result}
-              saveNotice={saveNotice}
             />
           </div>
         )}
       </div>
+
+      <Toast toast={toast} />
     </div>
   )
 }
