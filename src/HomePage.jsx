@@ -1,8 +1,5 @@
 import { useState } from 'react'
-import { unlockAccess } from './claude.js'
 import { signInWithGoogle } from './supabase.js'
-
-const ACCESS_HINT = '동방 비밀번호'
 
 /** 현무(북방·물·거북과 뱀)를 청나라풍 청색 + 금색 바람선으로 표현한 배경 */
 function HyeonmuBackdrop() {
@@ -154,16 +151,12 @@ export default function HomePage({
   unlocked,
   authReady,
   session,
-  onUnlocked,
   profile,
   onSignOut,
   onEditProfile,
   onSelect,
 }) {
-  const [password, setPassword] = useState('')
-  const [unlocking, setUnlocking] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
-  const [showHint, setShowHint] = useState(false)
   const [error, setError] = useState('')
 
   const userLabel =
@@ -171,25 +164,6 @@ export default function HomePage({
     session?.user?.user_metadata?.name ||
     session?.user?.email ||
     ''
-
-  async function handleUnlock() {
-    if (!password.trim()) {
-      setError('비밀번호를 입력해 주세요.')
-      return
-    }
-
-    setUnlocking(true)
-    setError('')
-    try {
-      await unlockAccess(password.trim())
-      onUnlocked()
-      setPassword('')
-    } catch (err) {
-      setError(err?.message || '비밀번호가 올바르지 않습니다.')
-    } finally {
-      setUnlocking(false)
-    }
-  }
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true)
@@ -208,7 +182,7 @@ export default function HomePage({
 
   function handleChoice(kind) {
     if (!unlocked) {
-      setError('Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.')
+      setError('먼저 Google 로그인을 해 주세요.')
       return
     }
     onSelect(kind)
@@ -259,50 +233,16 @@ export default function HomePage({
               {googleLoading ? 'Google로 이동 중...' : 'Google로 로그인'}
             </button>
 
-            <div className="home-lock-divider" aria-hidden="true">
-              <span>또는</span>
-            </div>
-
-            <label htmlFor="homePassword">
-              비밀번호
-              <input
-                id="homePassword"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleUnlock()
-                }}
-                placeholder="비밀번호를 입력하세요"
-                autoComplete="current-password"
-              />
-            </label>
-            <button
-              type="button"
-              className="home-unlock-btn"
-              onClick={handleUnlock}
-              disabled={unlocking}
-            >
-              {unlocking ? '확인 중...' : '잠금 해제'}
-            </button>
-            <button
-              type="button"
-              className="home-hint-toggle"
-              onClick={() => setShowHint((v) => !v)}
-            >
-              {showHint ? '힌트 숨기기' : '힌트 보기'}
-            </button>
-            {showHint && <p className="home-hint">{ACCESS_HINT}</p>}
+            <p className="home-lock-note">
+              Google 계정으로 로그인하면 바로 시작할 수 있습니다.
+            </p>
           </div>
         ) : (
           <div className="home-unlocked-row">
             <p className="home-unlocked">
-              {session
-                ? `${profile?.name || userLabel}님, 로그인되었습니다. 원하는 쪽을 선택하세요.`
-                : '잠금이 해제되었습니다. 원하는 쪽을 선택하세요.'}
+              {`${profile?.name || userLabel}님, 원하는 쪽을 선택하세요.`}
             </p>
-            {session && (
-              <div className="home-account-actions">
+            <div className="home-account-actions">
                 <button
                   type="button"
                   className="home-signout-btn"
@@ -318,7 +258,6 @@ export default function HomePage({
                   로그아웃
                 </button>
               </div>
-            )}
           </div>
         )}
 

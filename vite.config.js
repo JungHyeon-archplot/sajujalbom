@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
-import { isValidAccessPassword } from './server/access.js'
 import { streamClaude, readJsonBody } from './server/claudeProxy.js'
 
 function json(res, status, body) {
@@ -9,7 +8,7 @@ function json(res, status, body) {
   res.end(JSON.stringify(body))
 }
 
-function claudeApiPlugin({ apiKey, accessPassword }) {
+function claudeApiPlugin({ apiKey }) {
   return {
     name: 'claude-api-proxy',
     configureServer(server) {
@@ -66,31 +65,6 @@ function claudeApiPlugin({ apiKey, accessPassword }) {
         }
       })
 
-      server.middlewares.use('/api/unlock', async (req, res, next) => {
-        if (req.method === 'OPTIONS') {
-          res.statusCode = 204
-          res.end()
-          return
-        }
-        if (req.method !== 'POST') {
-          next()
-          return
-        }
-
-        try {
-          const payload = await readJsonBody(req)
-          if (!isValidAccessPassword(payload?.password, accessPassword)) {
-            json(res, 401, { error: '비밀번호가 올바르지 않습니다.' })
-            return
-          }
-          json(res, 200, { ok: true })
-        } catch (err) {
-          json(res, 500, {
-            error: err?.message || '잠금 해제 중 오류가 발생했습니다.',
-          })
-        }
-      })
-
       server.middlewares.use('/api/analyze-saju', async (req, res, next) => {
         if (req.method === 'OPTIONS') {
           res.statusCode = 204
@@ -105,13 +79,6 @@ function claudeApiPlugin({ apiKey, accessPassword }) {
 
         try {
           const payload = await readJsonBody(req)
-
-          if (!isValidAccessPassword(payload?.password, accessPassword)) {
-            json(res, 401, {
-              error: '비밀번호 인증이 필요합니다. 먼저 잠금을 해제해 주세요.',
-            })
-            return
-          }
 
           const result = await streamClaude({
             system: payload.system,
@@ -152,9 +119,8 @@ function claudeApiPlugin({ apiKey, accessPassword }) {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
   const apiKey = env.ANTHROPIC_API_KEY?.trim()
-  const accessPassword = env.SAJU_ACCESS_PASSWORD?.trim()
 
   return {
-    plugins: [react(), claudeApiPlugin({ apiKey, accessPassword })],
+    plugins: [react(), claudeApiPlugin({ apiKey })],
   }
 })

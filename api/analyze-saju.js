@@ -32,8 +32,6 @@ export default async function handler(req) {
     )
   }
 
-  const accessPassword = process.env.SAJU_ACCESS_PASSWORD?.trim()
-
   let payload
   try {
     payload = await req.json()
@@ -41,17 +39,9 @@ export default async function handler(req) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  // 비밀번호 또는 구글 로그인(Supabase 토큰) 둘 중 하나면 통과합니다.
-  const passwordOk =
-    Boolean(accessPassword) &&
-    String(payload?.password ?? '').trim() === accessPassword
   const user = await verifySupabaseToken(payload?.token)
-
-  if (!passwordOk && !user) {
-    return jsonError(
-      401,
-      'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
-    )
+  if (!user) {
+    return jsonError(401, '먼저 Google 로그인을 해 주세요.')
   }
 
   if (!payload?.system || !payload?.user) {
@@ -81,7 +71,7 @@ export default async function handler(req) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          await archiveReading(payload.user, result.text, user?.id)
+          await archiveReading(payload.user, result.text, user.id)
         }
         controller.close()
       } catch (err) {

@@ -2,57 +2,8 @@ import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from './sajuPrompt.js'
 import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from './tarotPrompt.js'
 import { getAccessToken } from './supabase.js'
 
-const ACCESS_STORAGE_KEY = 'saju_access_password'
-
-// /api/* 경로는 Cloudflare Pages(functions/api/*), Netlify(리다이렉트),
-// 로컬 Vite(미들웨어) 모두에서 동작합니다.
-function getUnlockUrl() {
-  return '/api/unlock'
-}
-
 function getAnalyzeUrl() {
   return '/api/analyze-saju'
-}
-
-export function getStoredAccessPassword() {
-  try {
-    return sessionStorage.getItem(ACCESS_STORAGE_KEY) || ''
-  } catch {
-    return ''
-  }
-}
-
-export function storeAccessPassword(password) {
-  try {
-    sessionStorage.setItem(ACCESS_STORAGE_KEY, password)
-  } catch {
-    // ignore
-  }
-}
-
-export function clearAccessPassword() {
-  try {
-    sessionStorage.removeItem(ACCESS_STORAGE_KEY)
-  } catch {
-    // ignore
-  }
-}
-
-/** 서버에서 비밀번호를 확인합니다. */
-export async function unlockAccess(password) {
-  const response = await fetch(getUnlockUrl(), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
-  })
-
-  const data = await response.json().catch(() => ({}))
-  if (!response.ok) {
-    throw new Error(data?.error || '비밀번호가 올바르지 않습니다.')
-  }
-
-  storeAccessPassword(password)
-  return true
 }
 
 /**
@@ -61,18 +12,15 @@ export async function unlockAccess(password) {
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
 async function requestReading({ system, user, failMessage, kind }) {
-  // 구글 로그인 또는 비밀번호, 둘 중 하나로 신원을 확인합니다.
-  const password = getStoredAccessPassword()
   const token = await getAccessToken().catch(() => '')
-
-  if (!password && !token) {
-    throw new Error('Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.')
+  if (!token) {
+    throw new Error('먼저 Google 로그인을 해 주세요.')
   }
 
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password, token, system, user, kind }),
+    body: JSON.stringify({ token, system, user, kind }),
   })
 
   const raw = await response.text()
@@ -95,10 +43,6 @@ async function requestReading({ system, user, failMessage, kind }) {
       }
     } else if (body) {
       message = body
-    }
-
-    if (response.status === 401) {
-      clearAccessPassword()
     }
 
     throw new Error(message)

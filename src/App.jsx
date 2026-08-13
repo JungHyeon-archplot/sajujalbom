@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import HomePage from './HomePage.jsx'
 import SajuPage from './SajuPage.jsx'
 import TarotPage from './TarotPage.jsx'
-import { getStoredAccessPassword } from './claude.js'
 import ProfileModal from './ProfileModal.jsx'
 import { isProfileComplete } from './profile.js'
 import {
@@ -17,14 +16,11 @@ export default function App() {
   const [view, setView] = useState('home') // 'home' | 'saju' | 'tarot'
   const [session, setSession] = useState(null)
   const [authReady, setAuthReady] = useState(false)
-  const [passwordUnlocked, setPasswordUnlocked] = useState(() =>
-    Boolean(getStoredAccessPassword()),
-  )
 
   const [profile, setProfile] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
 
-  const unlocked = Boolean(session) || passwordUnlocked
+  const unlocked = Boolean(session)
 
   // 로그인했는데 저장된 정보가 없으면 먼저 입력받습니다.
   useEffect(() => {
@@ -120,7 +116,6 @@ export default function App() {
         authReady={authReady}
         session={session}
         profile={profile}
-        onUnlocked={() => setPasswordUnlocked(true)}
         onSignOut={handleSignOut}
         onEditProfile={() => setShowProfile(true)}
         onSelect={setView}

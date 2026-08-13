@@ -19,11 +19,6 @@ export async function onRequestPost(context) {
     )
   }
 
-  const accessPassword = env.SAJU_ACCESS_PASSWORD?.trim()
-  if (!accessPassword) {
-    return jsonError(500, 'SAJU_ACCESS_PASSWORD가 Cloudflare 환경 변수에 없습니다.')
-  }
-
   let payload
   try {
     payload = await request.json()
@@ -31,17 +26,9 @@ export async function onRequestPost(context) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  // 비밀번호 또는 구글 로그인(Supabase 토큰) 둘 중 하나면 통과합니다.
-  const passwordOk =
-    Boolean(accessPassword) &&
-    String(payload?.password ?? '').trim() === accessPassword
   const user = await verifySupabaseToken(env, payload?.token)
-
-  if (!passwordOk && !user) {
-    return jsonError(
-      401,
-      'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
-    )
+  if (!user) {
+    return jsonError(401, '먼저 Google 로그인을 해 주세요.')
   }
 
   if (!payload?.system || !payload?.user) {
@@ -73,7 +60,7 @@ export async function onRequestPost(context) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          const task = archiveReading(env, payload.user, result.text, user?.id)
+          const task = archiveReading(env, payload.user, result.text, user.id)
           if (context?.waitUntil) context.waitUntil(task)
           else await task
         }
