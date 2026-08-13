@@ -1,28 +1,30 @@
-/* 눈누 웹폰트 — 사주 결과: 국민대학교 성곡 세리프 / 타로 결과: 페어 큰부리새 */
-@font-face {
-  font-family: 'KookminUniversitySunggokSerif';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101542@kmu80sungkokserif/kmu80sungkokserif/KMU80SungkokSerif.woff2') format('woff2');
-  font-weight: 400;
-  font-display: swap;
-}
+/* 눈누 웹폰트 — 사주: 마루 부리(가독성 바탕) / 타로: 프리텐다드(가독성 고딕) */
+@import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css');
 
 @font-face {
-  font-family: 'PairToucan';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101653@peartoucan-bold/peartoucan-bold/PearToucan-Light.woff2') format('woff2');
+  font-family: 'MaruBuri';
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Light.woff2') format('woff2');
   font-weight: 300;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'PairToucan';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101653@peartoucan-bold/peartoucan-bold/PearToucan-Regular.woff2') format('woff2');
+  font-family: 'MaruBuri';
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Regular.woff2') format('woff2');
   font-weight: 400;
   font-display: swap;
 }
 
 @font-face {
-  font-family: 'PairToucan';
-  src: url('https://cdn.jsdelivr.net/gh/Project-Noonnu/2607101653@peartoucan-bold/peartoucan-bold/PearToucan-Bold.woff2') format('woff2');
+  font-family: 'MaruBuri';
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'MaruBuri';
+  src: url('https://hangeul.pstatic.net/hangeul_static/webfont/MaruBuri/MaruBuri-Bold.woff2') format('woff2');
   font-weight: 700;
   font-display: swap;
 }
@@ -811,23 +813,27 @@ legend {
 
 .result-view {
   padding: 1.15rem 1.1rem 1.25rem;
-  font-family: 'KookminUniversitySunggokSerif', 'Batang', serif;
+  font-family: 'MaruBuri', 'Batang', serif;
   letter-spacing: -0.01em;
-  line-height: 1.8;
+  line-height: 1.85;
+  font-weight: 400;
 }
 
 .result-view .result-section-title,
 .result-view .result-name {
-  font-family: 'KookminUniversitySunggokSerif', 'Batang', serif;
+  font-family: 'MaruBuri', 'Batang', serif;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.015em;
 }
 
 .result-view .result-section-body p,
 .result-view .result-text {
   font-family: inherit;
-  font-size: 1rem;
-  line-height: 1.85;
+  font-size: 1.02rem;
+  line-height: 1.9;
+  font-weight: 400;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .result-font-credit {
@@ -2358,16 +2364,18 @@ legend {
 .tarot-result {
   background: rgba(255, 255, 255, 0.94);
   border-color: rgba(198, 164, 255, 0.4);
-  font-family: 'PairToucan', system-ui, sans-serif;
-  letter-spacing: -0.01em;
+  font-family: 'Pretendard', system-ui, sans-serif;
+  letter-spacing: -0.02em;
 }
 
 .tarot-result .result-text {
   font-family: inherit;
-  font-size: 0.98rem;
+  font-size: 1.02rem;
   font-weight: 400;
-  line-height: 1.8;
+  line-height: 1.85;
   color: #2a2038;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 
 .tarot-done-block {

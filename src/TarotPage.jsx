@@ -404,7 +404,7 @@ export default function TarotPage({
                 />
               )}
               <p className="result-font-credit tarot-font-credit">
-                글꼴 · 페어 큰부리새
+                글꼴 · 프리텐다드
               </p>
             </div>
 

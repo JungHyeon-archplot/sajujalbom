@@ -103,7 +103,7 @@ export default function SajuResultView({
         </div>
       )}
 
-      <p className="result-font-credit">글꼴 · 국민대학교 성곡 세리프</p>
+      <p className="result-font-credit">글꼴 · 마루 부리</p>
     </div>
   )
 }
