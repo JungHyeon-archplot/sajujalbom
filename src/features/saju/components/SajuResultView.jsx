@@ -1,12 +1,12 @@
+import ResultLoginGate from '../../../components/result/ResultLoginGate.jsx'
+import ResultMascot from '../../../components/mascot/ResultMascot.jsx'
+import { parseSajuSections } from '../../../lib/text.js'
 import {
   calendarLabel,
   formatBirthDate,
   formatBirthTime,
   genderLabel,
-} from './profile.js'
-import ResultLoginGate from './ResultLoginGate.jsx'
-import ResultMascot from './ResultMascot.jsx'
-import { parseSajuSections } from './text.js'
+} from '../../profile/profile.js'
 
 function SectionBlock({ section, index }) {
   return (

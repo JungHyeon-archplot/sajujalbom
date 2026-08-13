@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
+import { trackEvent } from '../../lib/analytics.js'
+import { upsertMyProfile } from '../../lib/supabase.js'
 import ProfileCat from './ProfileCat.jsx'
 import { isProfileComplete } from './profile.js'
-import { upsertMyProfile } from './supabase.js'
 
 /**
  * 처음 로그인한 사용자는 이 창을 채워야 넘어갈 수 있고,
@@ -45,6 +46,7 @@ export default function ProfileModal({ profile, onSaved, onClose }) {
 
     try {
       await upsertMyProfile(next)
+      trackEvent('profile_save', { first_time: firstTime })
       onSaved(next)
     } catch (err) {
       console.error(err)

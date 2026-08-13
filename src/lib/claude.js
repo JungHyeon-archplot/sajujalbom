@@ -1,5 +1,5 @@
-import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from './sajuPrompt.js'
-import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from './tarotPrompt.js'
+import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from '../features/saju/lib/sajuPrompt.js'
+import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from '../features/tarot/lib/tarotPrompt.js'
 import { getAccessToken } from './supabase.js'
 
 function getAnalyzeUrl() {

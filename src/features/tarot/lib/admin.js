@@ -1,4 +1,4 @@
-import { getAccessToken } from './supabase.js'
+import { getAccessToken } from '../../../lib/supabase.js'
 
 /**
  * 마스터 계정일 때만 기록 목록을 돌려줍니다.

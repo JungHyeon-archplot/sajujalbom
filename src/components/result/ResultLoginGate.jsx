@@ -1,6 +1,7 @@
 import { useState } from 'react'
-import { stashGuestResume } from './guestResume.js'
-import { signInWithGoogle } from './supabase.js'
+import { trackEvent } from '../../lib/analytics.js'
+import { stashGuestResume } from '../../lib/guestResume.js'
+import { signInWithGoogle } from '../../lib/supabase.js'
 
 /** 비로그인 결과 하단에 붙는 로그인 유도 */
 export default function ResultLoginGate({
@@ -11,6 +12,11 @@ export default function ResultLoginGate({
   const [error, setError] = useState('')
 
   async function handleLogin() {
+    trackEvent('login_click', {
+      method: 'google',
+      location: 'result_gate',
+      service: resumePayload?.view || 'unknown',
+    })
     setLoading(true)
     setError('')
     try {

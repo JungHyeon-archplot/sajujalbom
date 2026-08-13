@@ -1,38 +1,31 @@
 import { useEffect, useState } from 'react'
-import HomePage from './HomePage.jsx'
-import SajuPage from './SajuPage.jsx'
-import SharedResultPage from './SharedResultPage.jsx'
-import TarotPage from './TarotPage.jsx'
-import ProfileModal from './ProfileModal.jsx'
-import { clearGuestResume, loadGuestResume } from './guestResume.js'
-import { isProfileComplete } from './profile.js'
+import { trackEvent, trackPageView } from '../lib/analytics.js'
+import { clearGuestResume, loadGuestResume } from '../lib/guestResume.js'
+import { isProfileComplete } from '../features/profile/profile.js'
 import {
   getMyProfile,
   getSession,
   onAuthStateChange,
   signInWithGoogle,
   signOut,
-} from './supabase.js'
-import './App.css'
+} from '../lib/supabase.js'
+import { readShareId } from './routing.js'
 
-const RESULT_PATH = /^\/result\/([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i
-
-function readShareId(pathname = window.location.pathname) {
-  const match = pathname.match(RESULT_PATH)
-  return match?.[1] || null
-}
-
-export default function App() {
+/** 인증·프로필·화면 전환을 App에서 분리한 상태 훅 */
+export function useAppState() {
   const [view, setView] = useState(() => (readShareId() ? 'shared-result' : 'home'))
   const [shareId, setShareId] = useState(() => readShareId())
   const [session, setSession] = useState(null)
   const [authReady, setAuthReady] = useState(false)
   const [guestResume, setGuestResume] = useState(null)
-
   const [profile, setProfile] = useState(null)
   const [showProfile, setShowProfile] = useState(false)
 
   const isLoggedIn = Boolean(session)
+
+  useEffect(() => {
+    trackPageView(view, shareId)
+  }, [view, shareId])
 
   useEffect(() => {
     function syncFromUrl() {
@@ -45,7 +38,6 @@ export default function App() {
     return () => window.removeEventListener('popstate', syncFromUrl)
   }, [])
 
-  // 로그인했는데 저장된 정보가 없으면 먼저 입력받습니다.
   useEffect(() => {
     if (!session) {
       setProfile(null)
@@ -53,7 +45,6 @@ export default function App() {
       return undefined
     }
 
-    // 비로그인으로 본 결과가 있으면 로그인 후 그 화면으로 되돌립니다.
     const resume = loadGuestResume()
     if (resume?.view === 'saju' || resume?.view === 'tarot') {
       setGuestResume(resume)
@@ -105,6 +96,7 @@ export default function App() {
   }, [])
 
   function goHome() {
+    trackEvent('go_home')
     setShareId(null)
     setGuestResume(null)
     clearGuestResume()
@@ -115,6 +107,7 @@ export default function App() {
   }
 
   function handleSelect(nextView) {
+    trackEvent('select_service', { service: nextView })
     setShareId(null)
     setGuestResume(null)
     clearGuestResume()
@@ -126,6 +119,7 @@ export default function App() {
 
   async function handleEditProfile() {
     if (!session) {
+      trackEvent('login_click', { method: 'google', location: 'profile' })
       try {
         await signInWithGoogle()
       } catch (err) {
@@ -133,10 +127,12 @@ export default function App() {
       }
       return
     }
+    trackEvent('open_profile')
     setShowProfile(true)
   }
 
   async function handleSignOut() {
+    trackEvent('logout')
     try {
       await signOut()
     } catch (err) {
@@ -146,66 +142,21 @@ export default function App() {
     goHome()
   }
 
-  const modal = showProfile ? (
-    <ProfileModal
-      profile={profile}
-      onSaved={(next) => {
-        setProfile(next)
-        setShowProfile(false)
-      }}
-      onClose={() => setShowProfile(false)}
-    />
-  ) : null
-
-  const pageProps = {
+  return {
+    view,
+    shareId,
+    session,
+    authReady,
+    guestResume,
     profile,
+    showProfile,
     isLoggedIn,
-    onBack: goHome,
-    onEditProfile: handleEditProfile,
-    onSelect: handleSelect,
+    setProfile,
+    setShowProfile,
+    setGuestResume,
+    goHome,
+    handleSelect,
+    handleEditProfile,
+    handleSignOut,
   }
-
-  if (view === 'shared-result' && shareId) {
-    return <SharedResultPage shareId={shareId} onHome={goHome} />
-  }
-
-  if (view === 'saju') {
-    return (
-      <>
-        <SajuPage
-          {...pageProps}
-          initialResume={guestResume?.view === 'saju' ? guestResume : null}
-          onResumeConsumed={() => setGuestResume(null)}
-        />
-        {modal}
-      </>
-    )
-  }
-
-  if (view === 'tarot') {
-    return (
-      <>
-        <TarotPage
-          {...pageProps}
-          initialResume={guestResume?.view === 'tarot' ? guestResume : null}
-          onResumeConsumed={() => setGuestResume(null)}
-        />
-        {modal}
-      </>
-    )
-  }
-
-  return (
-    <>
-      <HomePage
-        authReady={authReady}
-        session={session}
-        profile={profile}
-        onSignOut={handleSignOut}
-        onEditProfile={handleEditProfile}
-        onSelect={handleSelect}
-      />
-      {modal}
-    </>
-  )
 }

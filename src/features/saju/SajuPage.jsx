@@ -1,12 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import dragonBg from './assets/dragon-bg.png'
-import { analyzeSaju } from './claude.js'
-import {
-  formatBirthTime,
-  formatHistoryDate,
-} from './profile.js'
-import ProfileRail from './ProfileRail.jsx'
-import SajuResultView from './SajuResultView.jsx'
+import dragonBg from '../../assets/dragon-bg.png'
+import Toast from '../../components/toast/Toast.jsx'
+import { useToast } from '../../components/toast/useToast.js'
+import { trackEvent } from '../../lib/analytics.js'
+import { analyzeSaju } from '../../lib/claude.js'
+import { claimResumeAction } from '../../lib/guestResume.js'
 import {
   deleteSajuReading,
   getSajuReading,
@@ -14,11 +12,15 @@ import {
   listSajuReadings,
   saveSajuReading,
   updateSajuReading,
-} from './supabase.js'
-import Toast from './Toast.jsx'
-import { claimResumeAction } from './guestResume.js'
-import { stripMarkdown } from './text.js'
-import { useToast } from './useToast.js'
+} from '../../lib/supabase.js'
+import { stripMarkdown } from '../../lib/text.js'
+import ProfileRail from '../profile/ProfileRail.jsx'
+import { formatBirthTime } from '../profile/profile.js'
+import SajuForm from './components/SajuForm.jsx'
+import SajuHistoryPanel from './components/SajuHistoryPanel.jsx'
+import SajuResultSkeleton from './components/SajuResultSkeleton.jsx'
+import SajuResultView from './components/SajuResultView.jsx'
+import SajuTopActions from './components/SajuTopActions.jsx'
 
 /** 사주 입력 + 해석 화면 (CRUD: 생성/조회/수정/삭제) */
 export default function SajuPage({
@@ -30,7 +32,7 @@ export default function SajuPage({
   initialResume = null,
   onResumeConsumed,
 }) {
-  const [mode, setMode] = useState('create') // 'create' | 'view' | 'edit'
+  const [mode, setMode] = useState('create')
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
   const [birthTime, setBirthTime] = useState('')
@@ -71,7 +73,6 @@ export default function SajuPage({
     }
   }, [])
 
-  // 로그인 직 본 게스트 결과를 복원하고, 가능하면 저장합니다.
   useEffect(() => {
     if (!initialResume?.result) return
 
@@ -115,7 +116,6 @@ export default function SajuPage({
       .catch((err) => {
         console.error(err)
       })
-    // 마운트 시 1회만
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -170,14 +170,13 @@ export default function SajuPage({
       return
     }
 
-    // 이미 비어 있는 새 화면이면 눌러도 바뀌는 게 없어 그 사실을 알려줍니다.
     if (mode === 'create' && !result && !selectedId) {
       showToast('이미 새 사주 화면이에요.')
       return
     }
 
+    trackEvent('saju_new')
     setMode('create')
-    // 저장해 둔 내 정보로 되돌려 두면 바로 해석을 누를 수 있습니다.
     setName(savedProfile?.name || '')
     setBirthDate(savedProfile?.birthDate || '')
     setBirthTime(savedProfile?.birthTime || '')
@@ -202,6 +201,7 @@ export default function SajuPage({
 
   function handleStartEdit() {
     if (busy || !selectedId) return
+    trackEvent('saju_edit_start')
     setMode('edit')
     setError('')
     requestAnimationFrame(() => {
@@ -231,6 +231,7 @@ export default function SajuPage({
           text: '사주 결과를 공유합니다.',
           url,
         })
+        trackEvent('saju_share', { method: 'native' })
         return
       }
     } catch (err) {
@@ -239,6 +240,7 @@ export default function SajuPage({
 
     try {
       await navigator.clipboard.writeText(url)
+      trackEvent('saju_share', { method: 'clipboard' })
       showToast('공유 링크를 복사했어요')
     } catch (err) {
       console.error(err)
@@ -253,6 +255,7 @@ export default function SajuPage({
     const ok = window.confirm(`「${readingName}」사주를 삭제할까요?`)
     if (!ok) return
 
+    trackEvent('saju_delete')
     try {
       await deleteSajuReading(id)
       setReadings((prev) => prev.filter((row) => row.id !== id))
@@ -319,6 +322,11 @@ export default function SajuPage({
 
     const editingId = mode === 'edit' ? selectedId : null
 
+    trackEvent('saju_analyze', {
+      mode: editingId ? 'edit' : 'create',
+      logged_in: isLoggedIn,
+    })
+
     setLoading(true)
     setError('')
     setResult('')
@@ -347,6 +355,10 @@ export default function SajuPage({
         calendar_type: calendarType,
       })
       scrollToResult()
+      trackEvent('saju_analyze_success', {
+        mode: editingId ? 'edit' : 'create',
+        logged_in: isLoggedIn,
+      })
 
       if (!isLoggedIn) {
         setMode('view')
@@ -421,105 +433,29 @@ export default function SajuPage({
         onSelect={onSelect}
         navLocked={busy}
       >
-        <h2 className="saju-history-title">저장된 사주</h2>
-        <button
-          type="button"
-          className="saju-new-btn"
-          onClick={handleNewSaju}
-          disabled={busy}
-        >
-          새 사주 만들기
-        </button>
-        {readings.length === 0 ? (
-          <p className="saju-history-empty">
-            {isLoggedIn
-              ? '아직 저장된 사주가 없습니다.'
-              : '로그인하면 사주 기록을 여기에 모아 둘 수 있어요.'}
-          </p>
-        ) : (
-          <ul className="saju-history-list">
-            {readings.map((row) => (
-              <li key={row.id} className="saju-history-row">
-                <button
-                  type="button"
-                  className={
-                    selectedId === row.id
-                      ? 'saju-history-item is-active'
-                      : 'saju-history-item'
-                  }
-                  onClick={() => handleSelectReading(row.id)}
-                  disabled={busy}
-                >
-                  <span className="saju-history-name">{row.name}</span>
-                  {row.created_at && (
-                    <time className="saju-history-date" dateTime={row.created_at}>
-                      {formatHistoryDate(row.created_at)}
-                    </time>
-                  )}
-                </button>
-                <button
-                  type="button"
-                  className="saju-history-delete"
-                  aria-label={`${row.name} 삭제`}
-                  onClick={(event) => handleDeleteReading(event, row.id, row.name)}
-                  disabled={busy}
-                >
-                  ×
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <SajuHistoryPanel
+          readings={readings}
+          selectedId={selectedId}
+          busy={busy}
+          isLoggedIn={isLoggedIn}
+          onNew={handleNewSaju}
+          onSelect={handleSelectReading}
+          onDelete={handleDeleteReading}
+        />
       </ProfileRail>
 
       <div className="app-content">
-        <div className="saju-top-actions">
-          <button type="button" className="back-btn" onClick={onBack}>
-            ← 처음으로
-          </button>
-          {isViewMode && (
-            <div className="saju-top-actions-right">
-              {selectedId && (
-                <button
-                  type="button"
-                  className="saju-share-btn"
-                  onClick={handleShare}
-                  disabled={busy || !selectedId}
-                >
-                  공유하기
-                </button>
-              )}
-              {selectedId && (
-                <button
-                  type="button"
-                  className="saju-edit-btn"
-                  onClick={handleStartEdit}
-                  disabled={busy}
-                >
-                  수정하기
-                </button>
-              )}
-              <button
-                type="button"
-                className="saju-new-btn saju-new-btn-inline"
-                onClick={handleNewSaju}
-                disabled={busy}
-              >
-                새 사주 만들기
-              </button>
-            </div>
-          )}
-          {mode === 'edit' && (
-            <button
-              type="button"
-              className="back-btn"
-              onClick={handleCancelEdit}
-              disabled={busy}
-            >
-              수정 취소
-            </button>
-          )}
-        </div>
+        <SajuTopActions
+          isViewMode={isViewMode}
+          mode={mode}
+          selectedId={selectedId}
+          busy={busy}
+          onBack={onBack}
+          onShare={handleShare}
+          onEdit={handleStartEdit}
+          onNew={handleNewSaju}
+          onCancelEdit={handleCancelEdit}
+        />
 
         {isViewMode ? (
           <h1>{selectedId ? '저장된 사주' : '사주 결과'}</h1>
@@ -527,97 +463,20 @@ export default function SajuPage({
           <>
             <h1>{mode === 'edit' ? '사주 수정' : '정보입력'}</h1>
             {showForm && (
-              <div className="saju-form" onKeyDown={handleFormKeyDown}>
-                <label className="field-wide" htmlFor="name">
-                  이름
-                  <input
-                    id="name"
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="이름을 입력하세요"
-                    disabled={busy}
-                  />
-                </label>
-
-                <label htmlFor="birthDate">
-                  생년월일
-                  <input
-                    id="birthDate"
-                    type="date"
-                    value={birthDate}
-                    onChange={(e) => setBirthDate(e.target.value)}
-                    disabled={busy}
-                  />
-                </label>
-
-                <label htmlFor="birthTime">
-                  태어난 시간
-                  <input
-                    id="birthTime"
-                    type="time"
-                    value={birthTime}
-                    onChange={(e) => setBirthTime(e.target.value)}
-                    disabled={busy}
-                  />
-                </label>
-
-                <div className="field">
-                  <span className="field-label">성별</span>
-                  <div className="radio-row">
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="gender"
-                        value="male"
-                        checked={gender === 'male'}
-                        onChange={(e) => setGender(e.target.value)}
-                        disabled={busy}
-                      />
-                      남성
-                    </label>
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="gender"
-                        value="female"
-                        checked={gender === 'female'}
-                        onChange={(e) => setGender(e.target.value)}
-                        disabled={busy}
-                      />
-                      여성
-                    </label>
-                  </div>
-                </div>
-
-                <div className="field">
-                  <span className="field-label">양력 / 음력</span>
-                  <div className="radio-row">
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="calendarType"
-                        value="solar"
-                        checked={calendarType === 'solar'}
-                        onChange={(e) => setCalendarType(e.target.value)}
-                        disabled={busy}
-                      />
-                      양력
-                    </label>
-                    <label className="radio-label">
-                      <input
-                        type="radio"
-                        name="calendarType"
-                        value="lunar"
-                        checked={calendarType === 'lunar'}
-                        onChange={(e) => setCalendarType(e.target.value)}
-                        disabled={busy}
-                      />
-                      음력
-                    </label>
-                  </div>
-                </div>
-              </div>
+              <SajuForm
+                name={name}
+                birthDate={birthDate}
+                birthTime={birthTime}
+                gender={gender}
+                calendarType={calendarType}
+                busy={busy}
+                onNameChange={setName}
+                onBirthDateChange={setBirthDate}
+                onBirthTimeChange={setBirthTime}
+                onGenderChange={setGender}
+                onCalendarTypeChange={setCalendarType}
+                onKeyDown={handleFormKeyDown}
+              />
             )}
 
             {mode === 'edit' ? (
@@ -667,32 +526,7 @@ export default function SajuPage({
 
         {error && <p className="error">{error}</p>}
 
-        {loading && (
-          <div className="result skeleton" aria-busy="true" aria-live="polite">
-            <p className="skeleton-status">명식을 펼치는 중…</p>
-            <div className="skeleton-block">
-              <div className="skeleton-line title" />
-              <div className="skeleton-line short" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line medium" />
-            </div>
-            <div className="skeleton-block">
-              <div className="skeleton-line title" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line short" />
-              <div className="skeleton-line medium" />
-              <div className="skeleton-line" />
-            </div>
-            <div className="skeleton-block">
-              <div className="skeleton-line title" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line medium" />
-              <div className="skeleton-line short" />
-            </div>
-          </div>
-        )}
+        {loading && <SajuResultSkeleton />}
 
         {result && !loading && (
           <div ref={resultRef}>

@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
-import dragonBg from './assets/dragon-bg.png'
-import SajuResultView from './SajuResultView.jsx'
-import { getSharedSajuReading } from './supabase.js'
-import { stripMarkdown } from './text.js'
-import Toast from './Toast.jsx'
-import { useToast } from './useToast.js'
+import dragonBg from '../../assets/dragon-bg.png'
+import Toast from '../../components/toast/Toast.jsx'
+import { useToast } from '../../components/toast/useToast.js'
+import { trackEvent } from '../../lib/analytics.js'
+import { getSharedSajuReading } from '../../lib/supabase.js'
+import { stripMarkdown } from '../../lib/text.js'
+import SajuResultSkeleton from '../saju/components/SajuResultSkeleton.jsx'
+import SajuResultView from '../saju/components/SajuResultView.jsx'
 
 export default function SharedResultPage({ shareId, onHome }) {
   const [reading, setReading] = useState(null)
@@ -25,6 +27,7 @@ export default function SharedResultPage({ shareId, onHome }) {
           ...row,
           result: stripMarkdown(row.result || ''),
         })
+        trackEvent('shared_result_view', { share_id: shareId })
       } catch (err) {
         console.error(err)
         if (active) {
@@ -46,6 +49,7 @@ export default function SharedResultPage({ shareId, onHome }) {
     const url = window.location.href
     try {
       await navigator.clipboard.writeText(url)
+      trackEvent('shared_result_copy_link')
       showToast('공유 링크를 복사했어요')
     } catch (err) {
       console.error(err)
@@ -79,18 +83,7 @@ export default function SharedResultPage({ shareId, onHome }) {
           친구가 보낸 사주 결과예요. 로그인 없이 볼 수 있습니다.
         </p>
 
-        {loading && (
-          <div className="result skeleton" aria-busy="true" aria-live="polite">
-            <p className="skeleton-status">명식을 펼치는 중…</p>
-            <div className="skeleton-block">
-              <div className="skeleton-line title" />
-              <div className="skeleton-line short" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line" />
-              <div className="skeleton-line medium" />
-            </div>
-          </div>
-        )}
+        {loading && <SajuResultSkeleton />}
 
         {error && !loading && <p className="error">{error}</p>}
 
