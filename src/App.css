@@ -1015,6 +1015,148 @@ legend {
   animation: sparkle 4.2s ease-in-out infinite;
 }
 
+/* 마스터 전용 기록 패널 */
+.tarot-admin {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 3;
+  box-sizing: border-box;
+  width: 210px;
+  height: 100vh;
+  padding: 1.1rem 0.9rem;
+  overflow-y: auto;
+  color: #f0e3ff;
+  background: rgba(14, 5, 32, 0.82);
+  border-right: 1px solid rgba(198, 164, 255, 0.28);
+  backdrop-filter: blur(6px);
+}
+
+.tarot-admin-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.tarot-admin-empty {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(240, 227, 255, 0.6);
+}
+
+.tarot-admin-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tarot-admin-name {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.55rem;
+  border: none;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tarot-admin-name:hover {
+  background: rgba(255, 255, 255, 0.13);
+}
+
+.tarot-admin-name em {
+  font-style: normal;
+  font-size: 0.76rem;
+  color: rgba(240, 227, 255, 0.6);
+}
+
+.tarot-admin-back {
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(240, 227, 255, 0.75);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+
+.tarot-admin-subtitle {
+  margin: 0.5rem 0 0.6rem;
+  font-size: 0.95rem;
+}
+
+.tarot-admin-entry {
+  padding: 0.55rem 0;
+  border-top: 1px solid rgba(198, 164, 255, 0.18);
+  font-size: 0.82rem;
+  line-height: 1.5;
+}
+
+.tarot-admin-date {
+  margin: 0;
+  font-size: 0.72rem;
+  color: rgba(240, 227, 255, 0.55);
+}
+
+.tarot-admin-concern {
+  margin: 0.2rem 0 0.15rem;
+  font-weight: 600;
+  word-break: keep-all;
+}
+
+.tarot-admin-cards {
+  margin: 0 0 0.3rem;
+  font-size: 0.74rem;
+  color: rgba(240, 227, 255, 0.68);
+}
+
+.tarot-admin-entry summary {
+  cursor: pointer;
+  font-size: 0.78rem;
+  color: rgba(198, 164, 255, 0.95);
+}
+
+.tarot-admin-result {
+  margin: 0.4rem 0 0;
+  padding: 0.5rem;
+  max-height: 260px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: inherit;
+  font-size: 0.76rem;
+  line-height: 1.6;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+}
+
+@media (min-width: 900px) {
+  .tarot:has(.tarot-admin) .tarot-content {
+    padding-left: 230px;
+  }
+}
+
+@media (max-width: 899px) {
+  .tarot-admin {
+    position: relative;
+    width: 100%;
+    height: auto;
+    max-height: 260px;
+    border-right: none;
+    border-bottom: 1px solid rgba(198, 164, 255, 0.28);
+  }
+}
+
 .tarot-content {
   position: relative;
   z-index: 1;

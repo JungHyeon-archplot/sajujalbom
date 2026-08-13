@@ -35,11 +35,9 @@ export async function onRequestPost(context) {
   const passwordOk =
     Boolean(accessPassword) &&
     String(payload?.password ?? '').trim() === accessPassword
-  const loginOk = passwordOk
-    ? true
-    : await verifySupabaseToken(env, payload?.token)
+  const user = await verifySupabaseToken(env, payload?.token)
 
-  if (!loginOk) {
+  if (!passwordOk && !user) {
     return jsonError(
       401,
       'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
@@ -75,7 +73,7 @@ export async function onRequestPost(context) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          const task = archiveReading(env, payload.user, result.text)
+          const task = archiveReading(env, payload.user, result.text, user?.id)
           if (context?.waitUntil) context.waitUntil(task)
           else await task
         }
@@ -186,25 +184,31 @@ async function checkUsageLimit(kind, request, env, context) {
   }
 }
 
-/** Supabase 액세스 토큰이 진짜인지 Supabase에 물어봅니다. */
+/**
+ * Supabase 액세스 토큰을 검증하고 사용자 정보를 돌려줍니다.
+ * @returns {Promise<{id:string, email:string}|null>}
+ */
 async function verifySupabaseToken(env, token) {
   const jwt = String(token || '').trim()
-  if (!jwt) return false
+  if (!jwt) return null
 
   const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
   const apikey =
     env.SUPABASE_ANON_KEY ||
     env.VITE_SUPABASE_ANON_KEY ||
     env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !apikey) return false
+  if (!url || !apikey) return null
 
   try {
     const res = await fetch(`${url}/auth/v1/user`, {
       headers: { apikey, Authorization: `Bearer ${jwt}` },
     })
-    return res.ok
+    if (!res.ok) return null
+    const user = await res.json()
+    if (!user?.id) return null
+    return { id: user.id, email: String(user.email || '').toLowerCase() }
   } catch {
-    return false
+    return null
   }
 }
 
@@ -230,7 +234,7 @@ function parseReadingMeta(userPrompt) {
   return { name: name === '이름 미입력' ? null : name, concern, cards }
 }
 
-async function archiveReading(env, userPrompt, result) {
+async function archiveReading(env, userPrompt, result, userId) {
   const url = (env.SUPABASE_URL || env.VITE_SUPABASE_URL || '').replace(/\/$/, '')
   const key = env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) return
@@ -250,6 +254,7 @@ async function archiveReading(env, userPrompt, result) {
         concern: meta.concern,
         cards: meta.cards,
         result,
+        user_id: userId || null,
       }),
     })
   } catch {

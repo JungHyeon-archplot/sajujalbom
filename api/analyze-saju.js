@@ -45,9 +45,9 @@ export default async function handler(req) {
   const passwordOk =
     Boolean(accessPassword) &&
     String(payload?.password ?? '').trim() === accessPassword
-  const loginOk = passwordOk ? true : await verifySupabaseToken(payload?.token)
+  const user = await verifySupabaseToken(payload?.token)
 
-  if (!loginOk) {
+  if (!passwordOk && !user) {
     return jsonError(
       401,
       'Google 로그인 또는 비밀번호로 먼저 잠금을 해제해 주세요.',
@@ -81,7 +81,7 @@ export default async function handler(req) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          await archiveReading(payload.user, result.text)
+          await archiveReading(payload.user, result.text, user?.id)
         }
         controller.close()
       } catch (err) {
@@ -147,10 +147,13 @@ function checkUsageLimit(kind, req) {
   return null
 }
 
-/** Supabase 액세스 토큰이 진짜인지 Supabase에 물어봅니다. */
+/**
+ * Supabase 액세스 토큰을 검증하고 사용자 정보를 돌려줍니다.
+ * @returns {Promise<{id:string, email:string}|null>}
+ */
 async function verifySupabaseToken(token) {
   const jwt = String(token || '').trim()
-  if (!jwt) return false
+  if (!jwt) return null
 
   const url = (
     process.env.SUPABASE_URL ||
@@ -161,15 +164,18 @@ async function verifySupabaseToken(token) {
     process.env.SUPABASE_ANON_KEY ||
     process.env.VITE_SUPABASE_ANON_KEY ||
     process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !apikey) return false
+  if (!url || !apikey) return null
 
   try {
     const res = await fetch(`${url}/auth/v1/user`, {
       headers: { apikey, Authorization: `Bearer ${jwt}` },
     })
-    return res.ok
+    if (!res.ok) return null
+    const user = await res.json()
+    if (!user?.id) return null
+    return { id: user.id, email: String(user.email || '').toLowerCase() }
   } catch {
-    return false
+    return null
   }
 }
 
@@ -191,7 +197,7 @@ function parseReadingMeta(userPrompt) {
   return { name: name === '이름 미입력' ? null : name, concern, cards }
 }
 
-async function archiveReading(userPrompt, result) {
+async function archiveReading(userPrompt, result, userId) {
   const url = (
     process.env.SUPABASE_URL ||
     process.env.VITE_SUPABASE_URL ||
@@ -215,6 +221,7 @@ async function archiveReading(userPrompt, result) {
         concern: meta.concern,
         cards: meta.cards,
         result,
+        user_id: userId || null,
       }),
     })
   } catch {

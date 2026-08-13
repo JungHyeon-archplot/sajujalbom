@@ -1,7 +1,72 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { analyzeTarot } from './claude.js'
+import { fetchAdminRecords, groupByName } from './admin.js'
 import { FAN_SIZE, SPREAD, describeCard, drawCardIds } from './tarotDeck.js'
 import { stripMarkdown } from './text.js'
+
+/** 마스터 계정에게만 보이는 기록 패널 */
+function RecordPanel({ records }) {
+  const groups = useMemo(() => groupByName(records), [records])
+  const [openName, setOpenName] = useState(null)
+
+  const opened = groups.find((g) => g.name === openName)
+
+  return (
+    <aside className="tarot-admin" aria-label="기록">
+      <h2 className="tarot-admin-title">기록 ({records.length})</h2>
+
+      {groups.length === 0 ? (
+        <p className="tarot-admin-empty">아직 기록이 없습니다.</p>
+      ) : !opened ? (
+        <ul className="tarot-admin-list">
+          {groups.map((group) => (
+            <li key={group.name}>
+              <button
+                type="button"
+                className="tarot-admin-name"
+                onClick={() => setOpenName(group.name)}
+              >
+                <span>{group.name}</span>
+                <em>{group.rows.length}</em>
+              </button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <div className="tarot-admin-detail">
+          <button
+            type="button"
+            className="tarot-admin-back"
+            onClick={() => setOpenName(null)}
+          >
+            ← 이름 목록
+          </button>
+          <h3 className="tarot-admin-subtitle">{opened.name}</h3>
+
+          {opened.rows.map((row) => (
+            <article key={row.id} className="tarot-admin-entry">
+              <p className="tarot-admin-date">
+                {new Date(row.created_at).toLocaleString('ko-KR')}
+              </p>
+              <p className="tarot-admin-concern">
+                {row.concern || '고민을 적지 않음'}
+              </p>
+              <p className="tarot-admin-cards">
+                {(row.cards || [])
+                  .map((c) => `${c.position}: ${c.card}`)
+                  .join(' / ')}
+              </p>
+              <details>
+                <summary>해석 보기</summary>
+                <pre className="tarot-admin-result">{row.result}</pre>
+              </details>
+            </article>
+          ))}
+        </div>
+      )}
+    </aside>
+  )
+}
 
 /** 유리구슬 — 해석 중 빛이 도는 연출 */
 function CrystalBall() {
@@ -27,6 +92,18 @@ export default function TarotPage({ onBack }) {
   const [concern, setConcern] = useState('')
   const [result, setResult] = useState('')
   const [error, setError] = useState('')
+  // 마스터 계정이 아니면 서버가 거절해서 계속 null로 남습니다.
+  const [records, setRecords] = useState(null)
+
+  useEffect(() => {
+    let active = true
+    fetchAdminRecords().then((rows) => {
+      if (active && rows) setRecords(rows)
+    })
+    return () => {
+      active = false
+    }
+  }, [phase])
 
   const done = picked.length === SPREAD.length
 
@@ -86,6 +163,8 @@ export default function TarotPage({ onBack }) {
   return (
     <div className="tarot">
       <div className="tarot-table" aria-hidden="true" />
+
+      {records && <RecordPanel records={records} />}
 
       <div className="tarot-content">
         <button type="button" className="back-btn back-btn-dark" onClick={onBack}>
