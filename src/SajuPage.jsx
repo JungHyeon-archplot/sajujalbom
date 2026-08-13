@@ -2,79 +2,34 @@ import { useEffect, useRef, useState } from 'react'
 import dragonBg from './assets/dragon-bg.png'
 import { analyzeSaju } from './claude.js'
 import {
+  formatBirthTime,
+  formatHistoryDate,
+} from './profile.js'
+import ProfileRail from './ProfileRail.jsx'
+import SajuResultView from './SajuResultView.jsx'
+import {
   deleteSajuReading,
-  getMyProfile,
   getSajuReading,
+  getSajuShareUrl,
   listSajuReadings,
   saveSajuReading,
   updateSajuReading,
 } from './supabase.js'
 import Toast from './Toast.jsx'
-import WanderingCat from './WanderingCat.jsx'
-import { parseSajuSections, stripMarkdown } from './text.js'
+import { claimResumeAction } from './guestResume.js'
+import { stripMarkdown } from './text.js'
 import { useToast } from './useToast.js'
 
-function formatBirthTime(value) {
-  if (!value) return ''
-  return String(value).slice(0, 5)
-}
-
-function genderLabel(value) {
-  if (value === 'male') return '남성'
-  if (value === 'female') return '여성'
-  return ''
-}
-
-function calendarLabel(value) {
-  if (value === 'lunar') return '음력'
-  if (value === 'solar') return '양력'
-  return ''
-}
-
-function SajuResultView({ reading, resultText }) {
-  const sections = parseSajuSections(resultText)
-  const metaBits = [
-    reading?.birth_date,
-    formatBirthTime(reading?.birth_time),
-    genderLabel(reading?.gender),
-    calendarLabel(reading?.calendar_type),
-  ].filter(Boolean)
-
-  return (
-    <div className="result result-view" aria-live="polite">
-      {(reading?.name || metaBits.length > 0) && (
-        <header className="result-header">
-          {reading?.name && <h2 className="result-name">{reading.name}</h2>}
-          {metaBits.length > 0 && (
-            <p className="result-meta">{metaBits.join(' · ')}</p>
-          )}
-        </header>
-      )}
-
-      {sections.length > 0 ? (
-        <div className="result-sections">
-          {sections.map((section, index) => (
-            <section key={`${section.title || 'body'}-${index}`} className="result-section">
-              {section.title && (
-                <h3 className="result-section-title">{section.title}</h3>
-              )}
-              <div className="result-section-body">
-                {section.body.split(/\n{2,}/).map((para, paraIndex) => (
-                  <p key={paraIndex}>{para.trim()}</p>
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
-      ) : (
-        <pre className="result-text">{resultText}</pre>
-      )}
-    </div>
-  )
-}
-
 /** 사주 입력 + 해석 화면 (CRUD: 생성/조회/수정/삭제) */
-export default function SajuPage({ onBack }) {
+export default function SajuPage({
+  onBack,
+  profile,
+  onEditProfile,
+  onSelect,
+  isLoggedIn = false,
+  initialResume = null,
+  onResumeConsumed,
+}) {
   const [mode, setMode] = useState('create') // 'create' | 'view' | 'edit'
   const [name, setName] = useState('')
   const [birthDate, setBirthDate] = useState('')
@@ -110,29 +65,71 @@ export default function SajuPage({ onBack }) {
       }
     }
 
-    // 저장해 둔 생년월일이 있으면 입력창을 미리 채워 둡니다.
-    async function loadProfile() {
-      try {
-        const profile = await getMyProfile()
-        if (!profile || cancelled) return
-        setName((prev) => prev || profile.name)
-        setBirthDate((prev) => prev || profile.birthDate)
-        setBirthTime((prev) => prev || profile.birthTime)
-        setGender((prev) => prev || profile.gender)
-        if (profile.calendarType) setCalendarType(profile.calendarType)
-        setSavedProfile(profile)
-        setProfileLoaded(Boolean(profile.birthDate))
-      } catch (err) {
-        console.error(err)
-      }
-    }
-
     loadReadings()
-    loadProfile()
     return () => {
       cancelled = true
     }
   }, [])
+
+  // 로그인 직 본 게스트 결과를 복원하고, 가능하면 저장합니다.
+  useEffect(() => {
+    if (!initialResume?.result) return
+
+    setName(initialResume.name || '')
+    setBirthDate(initialResume.birthDate || '')
+    setBirthTime(initialResume.birthTime || '')
+    setGender(initialResume.gender || '')
+    setCalendarType(initialResume.calendarType || 'solar')
+    setResult(initialResume.result)
+    setSelectedReading({
+      name: initialResume.name || '',
+      birth_date: initialResume.birthDate || '',
+      birth_time: initialResume.birthTime || '',
+      gender: initialResume.gender || '',
+      calendar_type: initialResume.calendarType || 'solar',
+    })
+    setMode('view')
+    onResumeConsumed?.()
+
+    if (!isLoggedIn) return undefined
+
+    const actionId = `saju-save:${initialResume.savedAt || ''}:${initialResume.result?.slice(0, 40) || ''}`
+    if (!claimResumeAction(actionId)) return
+
+    saveSajuReading({
+      name: initialResume.name || '',
+      birthDate: initialResume.birthDate || '',
+      birthTime: initialResume.birthTime || '',
+      gender: initialResume.gender || '',
+      calendarType: initialResume.calendarType || 'solar',
+      result: initialResume.result,
+    })
+      .then((saved) => {
+        setSelectedId(saved.id)
+        setReadings((prev) => [
+          { id: saved.id, name: saved.name, created_at: saved.created_at },
+          ...prev.filter((row) => row.id !== saved.id),
+        ])
+        showToast('결과가 저장됐어요')
+      })
+      .catch((err) => {
+        console.error(err)
+      })
+    // 마운트 시 1회만
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (!profile) return
+    setSavedProfile(profile)
+    setProfileLoaded(Boolean(profile.birthDate))
+    if (mode !== 'create' || selectedId) return
+    setName((prev) => prev || profile.name)
+    setBirthDate((prev) => prev || profile.birthDate)
+    setBirthTime((prev) => prev || profile.birthTime)
+    setGender((prev) => prev || profile.gender)
+    if (profile.calendarType) setCalendarType(profile.calendarType)
+  }, [profile, mode, selectedId])
 
   function scrollToResult() {
     requestAnimationFrame(() => {
@@ -216,6 +213,37 @@ export default function SajuPage({ onBack }) {
   function handleCancelEdit() {
     if (busy || !selectedId) return
     handleSelectReading(selectedId)
+  }
+
+  async function handleShare() {
+    if (!selectedId) {
+      showToast('저장이 끝난 뒤에 공유할 수 있어요.')
+      return
+    }
+
+    const url = getSajuShareUrl(selectedId)
+    const title = name.trim() ? `${name.trim()}의 사주` : '사주 결과'
+
+    try {
+      if (typeof navigator.share === 'function') {
+        await navigator.share({
+          title,
+          text: '사주 결과를 공유합니다.',
+          url,
+        })
+        return
+      }
+    } catch (err) {
+      if (err?.name === 'AbortError') return
+    }
+
+    try {
+      await navigator.clipboard.writeText(url)
+      showToast('공유 링크를 복사했어요')
+    } catch (err) {
+      console.error(err)
+      showToast('링크 복사에 실패했어요')
+    }
   }
 
   async function handleDeleteReading(event, id, readingName) {
@@ -320,6 +348,12 @@ export default function SajuPage({ onBack }) {
       })
       scrollToResult()
 
+      if (!isLoggedIn) {
+        setMode('view')
+        showToast('로그인하면 전체 결과와 저장·공유가 열려요')
+        return
+      }
+
       try {
         const payload = {
           name: name.trim(),
@@ -346,6 +380,7 @@ export default function SajuPage({ onBack }) {
         showToast(editingId ? '수정됨' : '저장됨')
       } catch (saveErr) {
         console.error(saveErr)
+        setMode('view')
         setError(
           editingId
             ? '해석은 완료됐지만 수정 저장에 실패했습니다.'
@@ -379,7 +414,13 @@ export default function SajuPage({ onBack }) {
         aria-hidden="true"
       />
 
-      <aside className="saju-history" aria-label="저장된 사주 목록">
+      <ProfileRail
+        theme="saju"
+        profile={profile}
+        onEditProfile={onEditProfile}
+        onSelect={onSelect}
+        navLocked={busy}
+      >
         <h2 className="saju-history-title">저장된 사주</h2>
         <button
           type="button"
@@ -390,7 +431,11 @@ export default function SajuPage({ onBack }) {
           새 사주 만들기
         </button>
         {readings.length === 0 ? (
-          <p className="saju-history-empty">아직 저장된 이름이 없습니다.</p>
+          <p className="saju-history-empty">
+            {isLoggedIn
+              ? '아직 저장된 사주가 없습니다.'
+              : '로그인하면 사주 기록을 여기에 모아 둘 수 있어요.'}
+          </p>
         ) : (
           <ul className="saju-history-list">
             {readings.map((row) => (
@@ -405,7 +450,12 @@ export default function SajuPage({ onBack }) {
                   onClick={() => handleSelectReading(row.id)}
                   disabled={busy}
                 >
-                  {row.name}
+                  <span className="saju-history-name">{row.name}</span>
+                  {row.created_at && (
+                    <time className="saju-history-date" dateTime={row.created_at}>
+                      {formatHistoryDate(row.created_at)}
+                    </time>
+                  )}
                 </button>
                 <button
                   type="button"
@@ -420,7 +470,7 @@ export default function SajuPage({ onBack }) {
             ))}
           </ul>
         )}
-      </aside>
+      </ProfileRail>
 
       <div className="app-content">
         <div className="saju-top-actions">
@@ -429,14 +479,26 @@ export default function SajuPage({ onBack }) {
           </button>
           {isViewMode && (
             <div className="saju-top-actions-right">
-              <button
-                type="button"
-                className="saju-edit-btn"
-                onClick={handleStartEdit}
-                disabled={busy}
-              >
-                수정하기
-              </button>
+              {selectedId && (
+                <button
+                  type="button"
+                  className="saju-share-btn"
+                  onClick={handleShare}
+                  disabled={busy || !selectedId}
+                >
+                  공유하기
+                </button>
+              )}
+              {selectedId && (
+                <button
+                  type="button"
+                  className="saju-edit-btn"
+                  onClick={handleStartEdit}
+                  disabled={busy}
+                >
+                  수정하기
+                </button>
+              )}
               <button
                 type="button"
                 className="saju-new-btn saju-new-btn-inline"
@@ -460,7 +522,7 @@ export default function SajuPage({ onBack }) {
         </div>
 
         {isViewMode ? (
-          <h1>저장된 사주</h1>
+          <h1>{selectedId ? '저장된 사주' : '사주 결과'}</h1>
         ) : (
           <>
             <h1>{mode === 'edit' ? '사주 수정' : '정보입력'}</h1>
@@ -607,7 +669,7 @@ export default function SajuPage({ onBack }) {
 
         {loading && (
           <div className="result skeleton" aria-busy="true" aria-live="polite">
-            <p className="skeleton-status">묘선이 명식을 펼치는 중이다냥…</p>
+            <p className="skeleton-status">명식을 펼치는 중…</p>
             <div className="skeleton-block">
               <div className="skeleton-line title" />
               <div className="skeleton-line short" />
@@ -634,21 +696,42 @@ export default function SajuPage({ onBack }) {
 
         {result && !loading && (
           <div ref={resultRef}>
+            {selectedId && (
+              <div className="result-share-bar">
+                <button
+                  type="button"
+                  className="saju-share-btn saju-share-btn-primary"
+                  onClick={handleShare}
+                  disabled={busy}
+                >
+                  친구에게 공유하기
+                </button>
+                <p className="result-share-hint">
+                  링크로 들어온 사람은 로그인 없이 결과를 볼 수 있어요.
+                </p>
+              </div>
+            )}
             <SajuResultView
               reading={selectedReading}
               resultText={result}
+              locked={!isLoggedIn}
+              resumePayload={
+                !isLoggedIn && result
+                  ? {
+                      view: 'saju',
+                      result,
+                      name: name.trim(),
+                      birthDate,
+                      birthTime,
+                      gender,
+                      calendarType,
+                    }
+                  : null
+              }
             />
           </div>
         )}
       </div>
-
-      {(loading || result) && (
-        <WanderingCat
-          kind="saju"
-          mood={loading ? 'waiting' : 'reading'}
-          avoidSidebar
-        />
-      )}
 
       <Toast toast={toast} />
     </div>

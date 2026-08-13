@@ -1,11 +1,30 @@
 import { useEffect, useMemo, useState } from 'react'
 import { analyzeTarot } from './claude.js'
 import { fetchAdminRecords, groupByName } from './admin.js'
+import ProfileRail from './ProfileRail.jsx'
+import ResultLoginGate from './ResultLoginGate.jsx'
+import ResultMascot from './ResultMascot.jsx'
 import { FAN_SIZE, SPREAD, describeCard, drawCardIds } from './tarotDeck.js'
 import Toast from './Toast.jsx'
-import WanderingCat from './WanderingCat.jsx'
 import { stripMarkdown } from './text.js'
 import { useToast } from './useToast.js'
+
+function teaserText(text) {
+  const raw = String(text || '')
+  const paras = raw.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean)
+  if (paras.length >= 2) {
+    const keep = Math.max(1, Math.ceil(paras.length / 2))
+    return {
+      visible: paras.slice(0, keep).join('\n\n'),
+      locked: keep < paras.length,
+    }
+  }
+  const cut = Math.max(120, Math.ceil(raw.length / 2))
+  return {
+    visible: raw.slice(0, cut),
+    locked: raw.length > cut,
+  }
+}
 
 /** 마스터 계정에게만 보이는 기록 패널 */
 function RecordPanel({ records }) {
@@ -15,7 +34,7 @@ function RecordPanel({ records }) {
   const opened = groups.find((g) => g.name === openName)
 
   return (
-    <aside className="tarot-admin" aria-label="기록">
+    <div className="tarot-admin" aria-label="기록">
       <h2 className="tarot-admin-title">기록 ({records.length})</h2>
 
       {groups.length === 0 ? (
@@ -67,7 +86,7 @@ function RecordPanel({ records }) {
           ))}
         </div>
       )}
-    </aside>
+    </div>
   )
 }
 
@@ -86,18 +105,39 @@ function CrystalBall() {
   )
 }
 
-export default function TarotPage({ onBack }) {
+export default function TarotPage({
+  onBack,
+  profile,
+  onEditProfile,
+  onSelect,
+  isLoggedIn = false,
+  initialResume = null,
+  onResumeConsumed,
+}) {
   // 화면에는 여러 장 중 고르는 것으로 보이지만, 실제로는 미리 뽑아 둔 번호를 순서대로 배정합니다.
-  const [drawn, setDrawn] = useState(() => drawCardIds(SPREAD.length))
-  const [picked, setPicked] = useState([]) // 선택한 슬롯 index 순서
-  const [phase, setPhase] = useState('intro') // 'intro' | 'pick' | 'reading' | 'done'
-  const [name, setName] = useState('')
-  const [concern, setConcern] = useState('')
-  const [result, setResult] = useState('')
+  const [drawn, setDrawn] = useState(() =>
+    initialResume?.drawn?.length
+      ? initialResume.drawn
+      : drawCardIds(SPREAD.length),
+  )
+  const [picked, setPicked] = useState(() =>
+    initialResume?.result ? Array.from({ length: SPREAD.length }, (_, i) => i) : [],
+  )
+  const [phase, setPhase] = useState(() => (initialResume?.result ? 'done' : 'intro'))
+  const [name, setName] = useState(() => initialResume?.name || '')
+  const [concern, setConcern] = useState(() => initialResume?.concern || '')
+  const [result, setResult] = useState(() => initialResume?.result || '')
   const [error, setError] = useState('')
   // 마스터 계정이 아니면 서버가 거절해서 계속 null로 남습니다.
   const [records, setRecords] = useState(null)
   const { toast, showToast } = useToast()
+
+  useEffect(() => {
+    if (!initialResume?.result) return
+    onResumeConsumed?.()
+    if (isLoggedIn) showToast('전체 결과를 확인할 수 있어요')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     let active = true
@@ -109,7 +149,12 @@ export default function TarotPage({ onBack }) {
     }
   }, [phase])
 
+  useEffect(() => {
+    if (profile?.name) setName((prev) => prev || profile.name)
+  }, [profile])
+
   const done = picked.length === SPREAD.length
+  const preview = !isLoggedIn && result ? teaserText(result) : { visible: result, locked: false }
 
   // 섞는 연출을 잠깐 보여준 뒤 카드를 펼칩니다.
   useEffect(() => {
@@ -157,6 +202,9 @@ export default function TarotPage({ onBack }) {
       })
       setResult(stripMarkdown(text))
       setPhase('done')
+      if (!isLoggedIn) {
+        showToast('로그인하면 전체 결과를 볼 수 있어요')
+      }
     } catch (err) {
       console.error(err)
       setError(err?.message || '타로 해석 중 오류가 발생했습니다.')
@@ -177,7 +225,23 @@ export default function TarotPage({ onBack }) {
     <div className="tarot">
       <div className="tarot-table" aria-hidden="true" />
 
-      {records && <RecordPanel records={records} />}
+      <ProfileRail
+        theme="tarot"
+        profile={profile}
+        onEditProfile={onEditProfile}
+        onSelect={onSelect}
+        navLocked={phase === 'reading'}
+      >
+        {records ? (
+          <RecordPanel records={records} />
+        ) : (
+          <p className="rail-hint">
+            {isLoggedIn
+              ? '타로는 매번 새로 뽑습니다. 사주 기록은 사주 화면에서 이어서 볼 수 있어요.'
+              : '로그인하면 대기 없이 더 많이 볼 수 있고, 사주 기록도 저장됩니다.'}
+          </p>
+        )}
+      </ProfileRail>
 
       <div className="tarot-content">
         <button type="button" className="back-btn back-btn-dark" onClick={onBack}>
@@ -188,7 +252,9 @@ export default function TarotPage({ onBack }) {
           <h1>타로</h1>
           <p>
             {phase === 'intro'
-              ? '이름과 요즘 마음에 걸리는 일을 알려주세요'
+              ? profile?.name
+                ? `${profile.name}님, 요즘 마음에 걸리는 일을 알려주세요`
+                : '이름과 요즘 마음에 걸리는 일을 알려주세요'
               : phase === 'shuffle'
                 ? '카드를 섞고 있습니다…'
                 : phase === 'pick' && !done
@@ -287,14 +353,16 @@ export default function TarotPage({ onBack }) {
         {phase === 'reading' && (
           <div className="tarot-reading" aria-busy="true" aria-live="polite">
             <CrystalBall />
-            <p className="tarot-reading-text">묘선이 구슬을 들여다보는 중이다냥…</p>
+            <p className="tarot-reading-text">카드를 읽는 중…</p>
           </div>
         )}
 
         {error && <p className="error">{error}</p>}
 
         {phase === 'done' && (
-          <>
+          <div className="tarot-done-block">
+            <ResultMascot tone="tarot" />
+
             <ul className="drawn-list">
               {drawn.map((draw, i) => {
                 const card = describeCard(draw)
@@ -319,23 +387,33 @@ export default function TarotPage({ onBack }) {
               })}
             </ul>
 
-            <div className="result tarot-result" aria-live="polite">
-              <pre className="result-text">{result}</pre>
+            <div
+              className={`result tarot-result${preview.locked ? ' is-locked' : ''}`}
+              aria-live="polite"
+            >
+              <pre className="result-text">{preview.visible}</pre>
+              {preview.locked && (
+                <ResultLoginGate
+                  resumePayload={{
+                    view: 'tarot',
+                    result,
+                    name: name.trim(),
+                    concern: concern.trim(),
+                    drawn,
+                  }}
+                />
+              )}
+              <p className="result-font-credit tarot-font-credit">
+                글꼴 · 페어 큰부리새
+              </p>
             </div>
 
             <button type="button" className="tarot-btn" onClick={handleReset}>
               다시 뽑기
             </button>
-          </>
+          </div>
         )}
       </div>
-
-      {(phase === 'reading' || phase === 'done') && (
-        <WanderingCat
-          kind="tarot"
-          mood={phase === 'reading' ? 'waiting' : 'reading'}
-        />
-      )}
 
       <Toast toast={toast} />
     </div>

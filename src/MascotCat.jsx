@@ -3,7 +3,7 @@ import { useId } from 'react'
 /**
  * 사주잘봄 마스코트 — 민화풍 삼색 고양이 '묘선(妙仙)'.
  * 해 후광, 청록 산, 상서로운 구름, 모란을 배경으로 앉아 있습니다.
- * variant="buddy" 는 풍경 없이 고양이만 — 화면을 돌아다닐 때 씁니다.
+ * variant="buddy" 는 풍경 없이 고양이만 — 결과 인사 등에 씁니다.
  */
 export default function MascotCat({ className = '', variant = 'full' }) {
   const uid = useId().replace(/:/g, '')
@@ -88,17 +88,20 @@ export default function MascotCat({ className = '', variant = 'full' }) {
 
       {/* 고양이 */}
       <g stroke={`url(#${inkId})`} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round">
-        <path
-          d="M142 196 C 174 196, 182 164, 160 146 C 150 138, 138 144, 141 155"
-          fill={`url(#${furId})`}
-        />
-        <path
-          d="M152 188 l10 -3 M160 176 l9 -2 M160 160 l8 1"
-          stroke="#a8814a"
-          strokeOpacity="0.75"
-          strokeWidth="2"
-          fill="none"
-        />
+        {/* 오른발 — 결과 인사에서 손을 흔듭니다 */}
+        <g className="mascot-wave-arm">
+          <path
+            d="M142 196 C 174 196, 182 164, 160 146 C 150 138, 138 144, 141 155"
+            fill={`url(#${furId})`}
+          />
+          <path
+            d="M152 188 l10 -3 M160 176 l9 -2 M160 160 l8 1"
+            stroke="#a8814a"
+            strokeOpacity="0.75"
+            strokeWidth="2"
+            fill="none"
+          />
+        </g>
 
         <path
           d="M68 122 C 58 150, 58 184, 70 200 L 130 200 C 142 184, 142 150, 132 122 Z"

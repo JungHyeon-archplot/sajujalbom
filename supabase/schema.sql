@@ -78,11 +78,12 @@ begin
 end $$;
 
 alter table public.users enable row level security;
+alter table public.users force row level security;
 
 drop policy if exists "users_select" on public.users;
 create policy "users_select" on public.users
   for select
-  using (user_id = auth.uid() or public.is_master());
+  using (user_id = auth.uid());
 
 drop policy if exists "users_insert" on public.users;
 create policy "users_insert" on public.users
@@ -92,35 +93,108 @@ create policy "users_insert" on public.users
 drop policy if exists "users_update" on public.users;
 create policy "users_update" on public.users
   for update
-  using (user_id = auth.uid() or public.is_master())
-  with check (user_id = auth.uid() or public.is_master());
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 -- ─────────────────────────────────────────────
--- 3. 사주: 본인 것만, 마스터는 전부
+-- 3. 사주: 로그인한 본인 것만
+--    USING (true) 정책이 하나라도 있으면 아래 정책이 무시되므로
+--    예전에 만든 anon_* 정책은 반드시 지웁니다.
 -- ─────────────────────────────────────────────
 alter table public.saju_readings enable row level security;
+alter table public.saju_readings force row level security;
+
+drop policy if exists "anon_select_saju_readings" on public.saju_readings;
+drop policy if exists "anon_insert_saju_readings" on public.saju_readings;
+drop policy if exists "anon_update_saju_readings" on public.saju_readings;
+drop policy if exists "anon_delete_saju_readings" on public.saju_readings;
 
 drop policy if exists "saju_select" on public.saju_readings;
 create policy "saju_select" on public.saju_readings
   for select
-  using (user_id = auth.uid() or public.is_master());
+  using (user_id = auth.uid());
 
--- 로그인 사용자는 자기 것으로만, 비로그인(비밀번호 사용자)은 주인 없는 기록으로 저장됩니다.
 drop policy if exists "saju_insert" on public.saju_readings;
 create policy "saju_insert" on public.saju_readings
   for insert
-  with check (user_id is not distinct from auth.uid());
+  with check (user_id = auth.uid());
 
 drop policy if exists "saju_update" on public.saju_readings;
 create policy "saju_update" on public.saju_readings
   for update
-  using (user_id = auth.uid() or public.is_master())
-  with check (user_id = auth.uid() or public.is_master());
+  using (user_id = auth.uid())
+  with check (user_id = auth.uid());
 
 drop policy if exists "saju_delete" on public.saju_readings;
 create policy "saju_delete" on public.saju_readings
   for delete
-  using (user_id = auth.uid() or public.is_master());
+  using (user_id = auth.uid());
+
+revoke all on function public.is_master() from public, anon;
+grant execute on function public.is_master() to authenticated;
+
+-- ─────────────────────────────────────────────
+-- 3-1. 공유 링크용 조회
+--      RLS로는 anon이 목록을 훑을 수 있어, UUID를 아는 사람만
+--      한 건을 읽도록 security definer RPC를 둡니다.
+-- ─────────────────────────────────────────────
+create or replace function public.get_shared_saju(p_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public
+as $$
+declare
+  payload jsonb;
+begin
+  select jsonb_build_object(
+    'id', r.id,
+    'name', coalesce(nullif(btrim(r.name), ''), u.name),
+    'birth_date', coalesce(u.birth_date::text, r.birth_date::text),
+    'birth_time', coalesce(u.birth_time::text, r.birth_time::text),
+    'gender', coalesce(u.gender, r.gender),
+    'calendar_type', coalesce(u.calendar_type, r.calendar_type, 'solar'),
+    'result', r.result,
+    'created_at', r.created_at
+  )
+  into payload
+  from public.saju_readings r
+  left join public.users u on u.user_id = r.user_id
+  where r.id = p_id;
+
+  return payload;
+end;
+$$;
+
+revoke all on function public.get_shared_saju(uuid) from public;
+grant execute on function public.get_shared_saju(uuid) to anon, authenticated;
+
+comment on function public.get_shared_saju(uuid) is
+  '공유 링크로 사주 결과 1건을 로그인 없이 조회합니다.';
+
+-- ─────────────────────────────────────────────
+-- 3-2. 홈 화면용 사주 결과 총 건수
+--      행 내용은 주지 않고, result가 있는 건수만 공개합니다.
+-- ─────────────────────────────────────────────
+create or replace function public.get_saju_reading_count()
+returns bigint
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select count(*)::bigint
+  from public.saju_readings
+  where result is not null
+    and btrim(result::text) <> '';
+$$;
+
+revoke all on function public.get_saju_reading_count() from public;
+grant execute on function public.get_saju_reading_count() to anon, authenticated;
+
+comment on function public.get_saju_reading_count() is
+  '홈 화면에 보여줄 사주 결과 총 건수. 로그인 없이 조회 가능.';
 
 -- ─────────────────────────────────────────────
 -- 4. 타로: 브라우저에서는 아무도 못 봅니다.

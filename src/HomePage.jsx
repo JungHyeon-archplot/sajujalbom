@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import MascotCat from './MascotCat.jsx'
-import { signInWithGoogle } from './supabase.js'
+import ProfileCat from './ProfileCat.jsx'
+import { isProfileComplete, profileMetaLine } from './profile.js'
+import { getSajuReadingCount, signInWithGoogle } from './supabase.js'
 
 /** 현무(북방·물·거북과 뱀)를 청나라풍 청색 + 금색 바람선으로 표현한 배경 */
 function HyeonmuBackdrop() {
@@ -149,7 +151,6 @@ function TarotMark() {
 }
 
 export default function HomePage({
-  unlocked,
   authReady,
   session,
   profile,
@@ -159,12 +160,27 @@ export default function HomePage({
 }) {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
+  const [sajuCount, setSajuCount] = useState(null)
 
   const userLabel =
     session?.user?.user_metadata?.full_name ||
     session?.user?.user_metadata?.name ||
     session?.user?.email ||
     ''
+
+  useEffect(() => {
+    let active = true
+    getSajuReadingCount()
+      .then((count) => {
+        if (active && count != null) setSajuCount(count)
+      })
+      .catch((err) => {
+        console.error(err)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   async function handleGoogleSignIn() {
     setGoogleLoading(true)
@@ -179,14 +195,6 @@ export default function HomePage({
       )
       setGoogleLoading(false)
     }
-  }
-
-  function handleChoice(kind) {
-    if (!unlocked) {
-      setError('먼저 Google 로그인을 해 주세요.')
-      return
-    }
-    onSelect(kind)
   }
 
   return (
@@ -204,8 +212,7 @@ export default function HomePage({
           <button
             type="button"
             className="choice choice-saju"
-            onClick={() => handleChoice('saju')}
-            disabled={!unlocked}
+            onClick={() => onSelect('saju')}
           >
             <DragonMark />
             <span className="choice-title">사주</span>
@@ -215,8 +222,7 @@ export default function HomePage({
           <button
             type="button"
             className="choice choice-tarot"
-            onClick={() => handleChoice('tarot')}
-            disabled={!unlocked}
+            onClick={() => onSelect('tarot')}
           >
             <TarotMark />
             <span className="choice-title">타로</span>
@@ -224,46 +230,69 @@ export default function HomePage({
           </button>
         </div>
 
-        {!unlocked ? (
-          <div className="home-lock">
+        {session ? (
+          <div className="home-unlocked-row">
             <button
               type="button"
-              className="home-google-btn"
+              className="home-profile-chip"
+              onClick={onEditProfile}
+            >
+              <span className="home-profile-avatar">
+                <ProfileCat gender={profile?.gender} />
+              </span>
+              <span className="home-profile-copy">
+                <strong>{profile?.name || userLabel || '내 정보'}</strong>
+                <em>
+                  {isProfileComplete(profile)
+                    ? profileMetaLine(profile)
+                    : '정보를 입력하면 사주와 타로에 쓰입니다'}
+                </em>
+              </span>
+            </button>
+            <p className="home-unlocked">원하는 쪽을 선택하세요</p>
+            <div className="home-account-actions">
+              <button
+                type="button"
+                className="home-signout-btn"
+                onClick={onEditProfile}
+              >
+                내 정보
+              </button>
+              <button
+                type="button"
+                className="home-signout-btn"
+                onClick={onSignOut}
+              >
+                로그아웃
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="home-guest-row">
+            <p className="home-unlocked">로그인 없이 바로 시작할 수 있어요</p>
+            <button
+              type="button"
+              className="home-google-btn home-google-btn-soft"
               onClick={handleGoogleSignIn}
               disabled={!authReady || googleLoading}
             >
               {googleLoading ? 'Google로 이동 중...' : 'Google로 로그인'}
             </button>
-
             <p className="home-lock-note">
-              Google 계정으로 로그인하면 바로 시작할 수 있습니다.
+              로그인하면 전체 결과 저장·공유와 추가 해석이 열려요.
             </p>
-          </div>
-        ) : (
-          <div className="home-unlocked-row">
-            <p className="home-unlocked">
-              {`${profile?.name || userLabel}님, 원하는 쪽을 선택하세요.`}
-            </p>
-            <div className="home-account-actions">
-                <button
-                  type="button"
-                  className="home-signout-btn"
-                  onClick={onEditProfile}
-                >
-                  내 정보
-                </button>
-                <button
-                  type="button"
-                  className="home-signout-btn"
-                  onClick={onSignOut}
-                >
-                  로그아웃
-                </button>
-              </div>
           </div>
         )}
 
         {error && <p className="home-error">{error}</p>}
+
+        {sajuCount != null && sajuCount > 0 && (
+          <p className="home-stat" aria-live="polite">
+            지금까지 총{' '}
+            <strong>{sajuCount.toLocaleString('ko-KR')}</strong>
+            개의 사주가 생성되었습니다
+          </p>
+        )}
       </div>
     </div>
   )

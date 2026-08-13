@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import ProfileCat from './ProfileCat.jsx'
 import { isProfileComplete } from './profile.js'
 import { upsertMyProfile } from './supabase.js'
 
@@ -56,13 +57,16 @@ export default function ProfileModal({ profile, onSaved, onClose }) {
   return (
     <div className="modal-backdrop" role="dialog" aria-modal="true">
       <div className="modal">
+        <div className="modal-portrait" aria-hidden="true">
+          <ProfileCat gender={gender} />
+        </div>
         <h2 className="modal-title">
           {firstTime ? '처음이시네요' : '내 정보'}
         </h2>
         <p className="modal-desc">
           {firstTime
-            ? '사주를 보려면 아래 정보가 필요합니다. 한 번만 입력하면 다음부터는 자동으로 채워집니다.'
-            : '저장된 정보를 고칠 수 있습니다. 사주를 볼 때 이 정보가 쓰입니다.'}
+            ? '사주와 타로에 같이 쓰일 정보입니다. 한 번만 입력하면 다음부터는 자동으로 채워집니다.'
+            : '저장된 정보를 고칠 수 있습니다. 사주와 타로에 같이 쓰입니다.'}
         </p>
 
         <div className="modal-form">

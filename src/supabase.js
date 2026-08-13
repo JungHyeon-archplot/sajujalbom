@@ -147,23 +147,34 @@ async function selectReadings(columns, build) {
 export async function listSajuReadings() {
   if (!supabase) return []
 
-  const rows = await selectReadings('id, name, created_at', (q) =>
-    q.order('created_at', { ascending: false }),
+  const userId = await currentUserId()
+  if (!userId) return []
+
+  const rows = await selectReadings('id, name, created_at, user_id', (q) =>
+    q.eq('user_id', userId).order('created_at', { ascending: false }),
   )
 
   return (rows ?? []).map((row) => ({
     id: row.id,
     created_at: row.created_at,
-    name: row.users?.name || row.name || '이름 없음',
+    name: row.name || row.users?.name || '이름 없음',
   }))
+}
+
+async function currentUserId() {
+  const { data: auth } = await supabase.auth.getUser()
+  return auth?.user?.id || null
 }
 
 export async function getSajuReading(id) {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
+  const userId = await currentUserId()
+  if (!userId) throw new Error('먼저 Google 로그인을 해 주세요.')
+
   const rows = await selectReadings(
-    'id, name, birth_date, birth_time, gender, calendar_type, result, created_at',
-    (q) => q.eq('id', id).limit(1),
+    'id, name, birth_date, birth_time, gender, calendar_type, result, created_at, user_id',
+    (q) => q.eq('id', id).eq('user_id', userId).limit(1),
   )
 
   const row = rows?.[0]
@@ -174,7 +185,7 @@ export async function getSajuReading(id) {
     id: row.id,
     created_at: row.created_at,
     result: row.result,
-    name: profile.name,
+    name: row.name || profile.name,
     birth_date: profile.birthDate,
     birth_time: profile.birthTime,
     gender: profile.gender,
@@ -182,15 +193,61 @@ export async function getSajuReading(id) {
   }
 }
 
+/** 공유 링크로 들어온 사람이 로그인 없이 사주 결과 1건을 봅니다. */
+export async function getSharedSajuReading(id) {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
+  if (!id) throw new Error('공유 링크가 올바르지 않습니다.')
+
+  const { data, error } = await supabase.rpc('get_shared_saju', { p_id: id })
+  if (error) throw error
+  if (!data) throw new Error('공유된 사주를 찾지 못했습니다.')
+
+  return {
+    id: data.id,
+    created_at: data.created_at,
+    result: data.result,
+    name: data.name || '이름 없음',
+    birth_date: data.birth_date || '',
+    birth_time: trimTime(data.birth_time),
+    gender: data.gender || '',
+    calendar_type: data.calendar_type || 'solar',
+  }
+}
+
+/** 결과 페이지용 공유 URL */
+export function getSajuShareUrl(id) {
+  if (!id || typeof window === 'undefined') return ''
+  return `${window.location.origin}/result/${id}`
+}
+
+/** 홈 신뢰 배지용: 저장된 사주 결과 총 건수 */
+export async function getSajuReadingCount() {
+  if (!supabase) return null
+
+  const { data, error } = await supabase.rpc('get_saju_reading_count')
+  if (error) throw error
+
+  const count = Number(data)
+  return Number.isFinite(count) ? count : null
+}
+
 export async function saveSajuReading(input) {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
   const userId = await upsertMyProfile(input)
+  if (!userId) throw new Error('먼저 Google 로그인을 해 주세요.')
 
   const { data, error } = await supabase
     .from('saju_readings')
-    // 로그인하지 않았으면 연결할 곳이 없어 이름만 함께 남깁니다.
-    .insert({ result: input.result, name: userId ? null : input.name })
+    .insert({
+      result: input.result,
+      name: input.name,
+      birth_date: input.birthDate || null,
+      birth_time: input.birthTime || null,
+      gender: input.gender || null,
+      calendar_type: input.calendarType || 'solar',
+      user_id: userId,
+    })
     .select('id, name, created_at')
     .single()
 
@@ -202,15 +259,22 @@ export async function updateSajuReading(id, input) {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
   const userId = await upsertMyProfile(input)
+  if (!userId) throw new Error('먼저 Google 로그인을 해 주세요.')
 
-  const payload = {}
-  if (!userId) payload.name = input.name
+  const payload = {
+    name: input.name,
+    birth_date: input.birthDate || null,
+    birth_time: input.birthTime || null,
+    gender: input.gender || null,
+    calendar_type: input.calendarType || 'solar',
+  }
   if (input.result !== undefined) payload.result = input.result
 
   const { data, error } = await supabase
     .from('saju_readings')
     .update(payload)
     .eq('id', id)
+    .eq('user_id', userId)
     .select('id, name, created_at')
     .single()
 
@@ -221,7 +285,14 @@ export async function updateSajuReading(id, input) {
 export async function deleteSajuReading(id) {
   if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
 
-  const { error } = await supabase.from('saju_readings').delete().eq('id', id)
+  const userId = await currentUserId()
+  if (!userId) throw new Error('먼저 Google 로그인을 해 주세요.')
+
+  const { error } = await supabase
+    .from('saju_readings')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', userId)
 
   if (error) throw error
 }

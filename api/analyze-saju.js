@@ -39,18 +39,18 @@ export default async function handler(req) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
+  // 로그인은 선택. 비로그인만 IP 사용량 제한을 적용합니다.
   const user = await verifySupabaseToken(payload?.token)
-  if (!user) {
-    return jsonError(401, '먼저 Google 로그인을 해 주세요.')
-  }
 
   if (!payload?.system || !payload?.user) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
   const kind = payload?.kind === 'tarot' ? 'tarot' : 'saju'
-  const blocked = checkUsageLimit(kind, req)
-  if (blocked) return jsonError(429, blocked)
+  if (!user) {
+    const blocked = checkUsageLimit(kind, req)
+    if (blocked) return jsonError(429, blocked)
+  }
 
   const encoder = new TextEncoder()
 
@@ -71,7 +71,7 @@ export default async function handler(req) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          await archiveReading(payload.user, result.text, user.id)
+          await archiveReading(payload.user, result.text, user?.id || null)
         }
         controller.close()
       } catch (err) {
@@ -107,7 +107,7 @@ function limitMessage(kind, resetAt) {
   const m = leftMin % 60
   const left = h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`
   const queue = (leftMin * 100).toLocaleString('ko-KR')
-  return `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 찾아와 주세요.`
+  return `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, 비로그인 ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 오시거나, Google 로그인하면 바로 더 볼 수 있어요.`
 }
 
 function checkUsageLimit(kind, req) {

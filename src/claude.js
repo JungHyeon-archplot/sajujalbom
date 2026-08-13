@@ -12,15 +12,13 @@ function getAnalyzeUrl() {
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
 async function requestReading({ system, user, failMessage, kind }) {
+  // 비로그인도 해석 가능. 토큰이 있으면 서버가 로그인 사용자로 취급합니다.
   const token = await getAccessToken().catch(() => '')
-  if (!token) {
-    throw new Error('먼저 Google 로그인을 해 주세요.')
-  }
 
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token, system, user, kind }),
+    body: JSON.stringify({ token: token || undefined, system, user, kind }),
   })
 
   const raw = await response.text()
