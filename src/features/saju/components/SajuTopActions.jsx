@@ -5,6 +5,8 @@ export default function SajuTopActions({
   busy,
   onBack,
   onShare,
+  shared,
+  onStopSharing,
   onEdit,
   onNew,
   onCancelEdit,
@@ -23,7 +25,18 @@ export default function SajuTopActions({
               onClick={onShare}
               disabled={busy || !selectedId}
             >
-              공유하기
+              {shared ? '공유 링크 복사' : '공유하기'}
+            </button>
+          )}
+          {selectedId && shared && (
+            <button
+              type="button"
+              className="saju-edit-btn"
+              onClick={onStopSharing}
+              disabled={busy}
+              title="링크를 아는 사람도 더 이상 볼 수 없게 합니다"
+            >
+              공유 끄기
             </button>
           )}
           {selectedId && (

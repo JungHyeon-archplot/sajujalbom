@@ -101,6 +101,12 @@ create policy "users_update" on public.users
 --    USING (true) 정책이 하나라도 있으면 아래 정책이 무시되므로
 --    예전에 만든 anon_* 정책은 반드시 지웁니다.
 -- ─────────────────────────────────────────────
+-- 공유는 사용자가 명시적으로 켠 것만 열립니다(기본값 꺼짐).
+alter table public.saju_readings
+  add column if not exists is_shared boolean not null default false;
+alter table public.saju_readings
+  add column if not exists shared_at timestamptz;
+
 alter table public.saju_readings enable row level security;
 alter table public.saju_readings force row level security;
 
@@ -135,8 +141,9 @@ grant execute on function public.is_master() to authenticated;
 
 -- ─────────────────────────────────────────────
 -- 3-1. 공유 링크용 조회
---      RLS로는 anon이 목록을 훑을 수 있어, UUID를 아는 사람만
---      한 건을 읽도록 security definer RPC를 둡니다.
+--      UUID를 아는 사람만 한 건을 읽도록 security definer RPC를 둡니다.
+--      단, 주인이 공유를 켠(is_shared) 기록만 대상입니다.
+--      공유를 끄면 링크가 바로 무효가 됩니다.
 -- ─────────────────────────────────────────────
 create or replace function public.get_shared_saju(p_id uuid)
 returns jsonb
@@ -161,7 +168,8 @@ begin
   into payload
   from public.saju_readings r
   left join public.users u on u.user_id = r.user_id
-  where r.id = p_id;
+  where r.id = p_id
+    and r.is_shared;   -- 주인이 공유를 켠 기록만 열립니다
 
   return payload;
 end;
@@ -171,7 +179,7 @@ revoke all on function public.get_shared_saju(uuid) from public;
 grant execute on function public.get_shared_saju(uuid) to anon, authenticated;
 
 comment on function public.get_shared_saju(uuid) is
-  '공유 링크로 사주 결과 1건을 로그인 없이 조회합니다.';
+  '공유를 켠 사주 결과 1건을 로그인 없이 조회합니다. is_shared가 false면 아무것도 반환하지 않습니다.';
 
 -- ─────────────────────────────────────────────
 -- 3-2. 홈 화면용 사주 결과 총 건수

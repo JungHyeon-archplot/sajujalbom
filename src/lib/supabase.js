@@ -200,7 +200,7 @@ export async function getSharedSajuReading(id) {
 
   const { data, error } = await supabase.rpc('get_shared_saju', { p_id: id })
   if (error) throw error
-  if (!data) throw new Error('공유된 사주를 찾지 못했습니다.')
+  if (!data) throw new Error('공유가 꺼졌거나 없는 링크입니다.')
 
   return {
     id: data.id,
@@ -280,6 +280,40 @@ export async function updateSajuReading(id, input) {
 
   if (error) throw error
   return { ...data, name: input.name }
+}
+
+/** 공유 켜기/끄기. 링크는 켜져 있을 때만 열립니다. */
+export async function setSajuShared(id, shared) {
+  if (!supabase) throw new Error('Supabase가 설정되지 않았습니다.')
+
+  const userId = await currentUserId()
+  if (!userId) throw new Error('먼저 Google 로그인을 해 주세요.')
+
+  const { error } = await supabase
+    .from('saju_readings')
+    .update({
+      is_shared: shared,
+      shared_at: shared ? new Date().toISOString() : null,
+    })
+    .eq('id', id)
+    .eq('user_id', userId)
+
+  if (error) throw error
+  return shared
+}
+
+/** 이 기록이 지금 공유 중인지 */
+export async function isSajuShared(id) {
+  if (!supabase || !id) return false
+
+  const { data, error } = await supabase
+    .from('saju_readings')
+    .select('is_shared')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) return false
+  return Boolean(data?.is_shared)
 }
 
 export async function deleteSajuReading(id) {

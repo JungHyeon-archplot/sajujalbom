@@ -9,6 +9,8 @@ import {
   deleteSajuReading,
   getSajuReading,
   getSajuShareUrl,
+  isSajuShared,
+  setSajuShared,
   listSajuReadings,
   saveSajuReading,
   updateSajuReading,
@@ -46,6 +48,7 @@ export default function SajuPage({
   const [readings, setReadings] = useState([])
   const [selectedId, setSelectedId] = useState(null)
   const [selectedReading, setSelectedReading] = useState(null)
+  const [shared, setShared] = useState(false)
   const { toast, showToast } = useToast()
   const [profileLoaded, setProfileLoaded] = useState(false)
   const [savedProfile, setSavedProfile] = useState(null)
@@ -157,6 +160,7 @@ export default function SajuPage({
     try {
       const row = await getSajuReading(id)
       applyReadingToForm(row)
+      setShared(await isSajuShared(id))
       scrollToResult()
     } catch (err) {
       console.error(err)
@@ -186,6 +190,7 @@ export default function SajuPage({
     setError('')
     setSelectedId(null)
     setSelectedReading(null)
+    setShared(false)
 
     showToast(
       savedProfile?.birthDate
@@ -215,9 +220,31 @@ export default function SajuPage({
     handleSelectReading(selectedId)
   }
 
+  async function handleStopSharing() {
+    if (!selectedId) return
+    try {
+      await setSajuShared(selectedId, false)
+      setShared(false)
+      showToast('공유를 껐어요. 기존 링크는 더 이상 열리지 않아요.')
+    } catch (err) {
+      console.error(err)
+      showToast('공유를 끄지 못했어요')
+    }
+  }
+
   async function handleShare() {
     if (!selectedId) {
       showToast('저장이 끝난 뒤에 공유할 수 있어요.')
+      return
+    }
+
+    // 링크를 만들기 전에 이 기록만 공개로 바꿉니다(기본은 비공개).
+    try {
+      await setSajuShared(selectedId, true)
+      setShared(true)
+    } catch (err) {
+      console.error(err)
+      showToast('공유 설정에 실패했어요')
       return
     }
 
@@ -452,6 +479,8 @@ export default function SajuPage({
           busy={busy}
           onBack={onBack}
           onShare={handleShare}
+          shared={shared}
+          onStopSharing={handleStopSharing}
           onEdit={handleStartEdit}
           onNew={handleNewSaju}
           onCancelEdit={handleCancelEdit}
