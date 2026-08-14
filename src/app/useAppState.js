@@ -24,7 +24,7 @@ export function useAppState() {
   const isLoggedIn = Boolean(session)
 
   useEffect(() => {
-    trackPageView(view, shareId)
+    trackPageView(view)
   }, [view, shareId])
 
   useEffect(() => {

@@ -1,5 +1,10 @@
 // Cloudflare Pages Function: /api/analyze-saju
 // Workers 런타임은 실행 시간 벽(10초)이 없어 긴 사주 해석도 잘리지 않습니다.
+//
+// 프롬프트는 서버에서만 만듭니다. 클라이언트가 보낸 문장을 그대로 모델에 넘기면
+// 이 엔드포인트가 남의 API 키로 아무 요청이나 돌리는 통로가 되기 때문입니다.
+import { buildRequest } from '../../shared/buildPrompt.js'
+
 const ANTHROPIC_URL = 'https://api.anthropic.com/v1/messages'
 const MODEL = 'claude-sonnet-4-5'
 const MAX_TOKENS = 4096
@@ -26,18 +31,20 @@ export async function onRequestPost(context) {
     return jsonError(400, '요청 본문이 올바르지 않습니다.')
   }
 
-  // 로그인은 선택. 비로그인만 IP 사용량 제한을 적용합니다.
+  // 로그인은 선택. 로그인 사용자는 계정 기준으로, 비로그인은 IP 기준으로 셉니다.
   const user = await verifySupabaseToken(env, payload?.token)
 
-  if (!payload?.system || !payload?.user) {
-    return jsonError(400, '요청 본문이 올바르지 않습니다.')
+  const kind = payload?.kind === 'tarot' ? 'tarot' : 'saju'
+
+  let prompt
+  try {
+    prompt = buildRequest(kind, payload)
+  } catch (err) {
+    return jsonError(400, err?.message || '요청 본문이 올바르지 않습니다.')
   }
 
-  const kind = payload?.kind === 'tarot' ? 'tarot' : 'saju'
-  if (!user) {
-    const blocked = await checkUsageLimit(kind, request, env, context)
-    if (blocked) return jsonError(429, blocked)
-  }
+  const blocked = await checkUsageLimit(kind, request, env, context, user?.id)
+  if (blocked) return jsonError(429, blocked)
 
   const encoder = new TextEncoder()
 
@@ -48,8 +55,8 @@ export async function onRequestPost(context) {
         controller.enqueue(encoder.encode('​'))
 
         const result = await collectClaudeText({
-          system: payload.system,
-          user: payload.user,
+          system: prompt.system,
+          user: prompt.user,
           apiKey,
           onChunk(chunk) {
             controller.enqueue(encoder.encode(chunk))
@@ -59,7 +66,7 @@ export async function onRequestPost(context) {
         if (!result.ok) {
           controller.enqueue(encoder.encode(`\n\n[오류] ${result.error}`))
         } else if (kind === 'tarot') {
-          const task = archiveReading(env, payload.user, result.text, user?.id || null)
+          const task = archiveReading(env, prompt.user, result.text, user?.id || null)
           if (context?.waitUntil) context.waitUntil(task)
           else await task
         }
@@ -97,7 +104,7 @@ const LIMITS = {
   saju: { max: 2, label: '사주' },
 }
 
-function limitMessage(kind, resetAt) {
+function limitMessage(kind, resetAt, loggedIn) {
   const { max, label } = LIMITS[kind]
   const leftMs = Math.max(60000, resetAt - Date.now())
   const leftMin = Math.ceil(leftMs / 60000)
@@ -106,7 +113,9 @@ function limitMessage(kind, resetAt) {
   const left = h > 0 ? (m > 0 ? `${h}시간 ${m}분` : `${h}시간`) : `${m}분`
   // 남은 시간을 100배로 부풀린 "대기 인원" 연출
   const queue = (leftMin * 100).toLocaleString('ko-KR')
-  return `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, 비로그인 ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 오시거나, Google 로그인하면 바로 더 볼 수 있어요.`
+  return loggedIn
+    ? `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 찾아와 주세요.`
+    : `제 API 사용량이 녹고 있어요… 지금 대기 인원 ${queue}명, 비로그인 ${label}는 4시간에 ${max}번까지만 볼 수 있어요. ${left} 뒤에 다시 오시거나, Google 로그인하면 바로 더 볼 수 있어요.`
 }
 
 /**
@@ -114,12 +123,14 @@ function limitMessage(kind, resetAt) {
  * KV(TAROT_LIMIT_KV)가 연결돼 있으면 KV를, 없으면 Cache API를 씁니다.
  * @returns {Promise<string|null>} 막아야 하면 안내 문구, 통과면 null
  */
-async function checkUsageLimit(kind, request, env, context) {
+async function checkUsageLimit(kind, request, env, context, userId) {
   const { max } = LIMITS[kind]
-  const ip =
-    request.headers.get('CF-Connecting-IP') ||
-    request.headers.get('x-forwarded-for') ||
-    'unknown'
+  // 로그인했으면 계정 기준(IP를 바꿔도 소용없음), 아니면 IP 기준.
+  const ip = userId
+    ? `user:${userId}`
+    : request.headers.get('CF-Connecting-IP') ||
+      request.headers.get('x-forwarded-for') ||
+      'unknown'
   const now = Date.now()
 
   // 1) KV가 있으면 KV 사용 (정확도 높음)
@@ -130,7 +141,7 @@ async function checkUsageLimit(kind, request, env, context) {
     const fresh =
       state && state.resetAt > now ? state : { count: 0, resetAt: now + WINDOW_MS }
 
-    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt)
+    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt, Boolean(userId))
 
     fresh.count += 1
     await env.TAROT_LIMIT_KV.put(key, JSON.stringify(fresh), {
@@ -151,7 +162,7 @@ async function checkUsageLimit(kind, request, env, context) {
     const fresh =
       state && state.resetAt > now ? state : { count: 0, resetAt: now + WINDOW_MS }
 
-    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt)
+    if (fresh.count >= max) return limitMessage(kind, fresh.resetAt, Boolean(userId))
 
     fresh.count += 1
     const ttl = Math.max(60, Math.ceil((fresh.resetAt - now) / 1000))
@@ -362,11 +373,10 @@ async function collectClaudeText({ system, user, apiKey, onChunk }) {
 }
 
 function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+  // 이 API는 같은 도메인의 화면에서만 씁니다.
+  // Access-Control-Allow-Origin을 주지 않으면 다른 사이트에서 호출해도
+  // 브라우저가 응답을 읽지 못합니다.
+  return {}
 }
 
 function jsonError(status, message) {

@@ -1,0 +1,13 @@
+/*
+  Referrer-Policy: no-referrer
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Cross-Origin-Opener-Policy: same-origin-allow-popups
+  Content-Security-Policy: default-src 'self'; base-uri 'self'; object-src 'none'; frame-ancestors 'none'; form-action 'self'; img-src 'self' data: https:; font-src 'self' data: https://cdn.jsdelivr.net https://hangeul.pstatic.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; connect-src 'self' https://tmhkckmaoakbigshxoou.supabase.co https://cdn.jsdelivr.net https://hangeul.pstatic.net https://www.google-analytics.com https://region1.google-analytics.com https://*.google-analytics.com https://*.analytics.google.com
+
+# 공유 링크는 UUID가 곧 열람 권한이라, 이동한 사이트로 주소가 새지 않게 하고
+# 검색엔진에도 올라가지 않게 합니다.
+/result/*
+  Referrer-Policy: no-referrer
+  X-Robots-Tag: noindex, nofollow

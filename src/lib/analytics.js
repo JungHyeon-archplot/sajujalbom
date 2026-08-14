@@ -13,12 +13,10 @@ function gtag(...args) {
 }
 
 /** SPA 화면 전환을 GA4 page_view로 보냅니다. */
-export function trackPageView(view, shareId = null) {
+export function trackPageView(view) {
   const meta = VIEW_PATHS[view] || VIEW_PATHS.home
-  const pagePath =
-    view === 'shared-result' && shareId
-      ? `/result/${shareId}`
-      : meta.path
+  // 공유 링크의 UUID는 그 자체가 사주 열람 열쇠라 애널리틱스에 남기지 않습니다.
+  const pagePath = meta.path
 
   gtag('event', 'page_view', {
     page_path: pagePath,

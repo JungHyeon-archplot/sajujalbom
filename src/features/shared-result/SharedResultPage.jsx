@@ -27,7 +27,7 @@ export default function SharedResultPage({ shareId, onHome }) {
           ...row,
           result: stripMarkdown(row.result || ''),
         })
-        trackEvent('shared_result_view', { share_id: shareId })
+        trackEvent('shared_result_view')
       } catch (err) {
         console.error(err)
         if (active) {

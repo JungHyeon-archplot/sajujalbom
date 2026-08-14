@@ -1,5 +1,3 @@
-import { SAJU_SYSTEM_INSTRUCTION, buildSajuUserPrompt } from '../features/saju/lib/sajuPrompt.js'
-import { TAROT_SYSTEM_INSTRUCTION, buildTarotUserPrompt } from '../features/tarot/lib/tarotPrompt.js'
 import { getAccessToken } from './supabase.js'
 
 function getAnalyzeUrl() {
@@ -11,14 +9,15 @@ function getAnalyzeUrl() {
  * 서버는 타임아웃 방지를 위해 스트림으로 보내지만,
  * 여기서는 전체를 모은 뒤 완성된 텍스트만 반환합니다.
  */
-async function requestReading({ system, user, failMessage, kind }) {
+async function requestReading({ payload, failMessage }) {
   // 비로그인도 해석 가능. 토큰이 있으면 서버가 로그인 사용자로 취급합니다.
   const token = await getAccessToken().catch(() => '')
 
   const response = await fetch(getAnalyzeUrl(), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token: token || undefined, system, user, kind }),
+    // 프롬프트는 서버가 직접 만듭니다. 여기서는 입력값만 보냅니다.
+    body: JSON.stringify({ token: token || undefined, ...payload }),
   })
 
   const raw = await response.text()
@@ -75,19 +74,32 @@ async function requestReading({ system, user, failMessage, kind }) {
 /** 사주 해석 */
 export async function analyzeSaju(formData) {
   return requestReading({
-    system: SAJU_SYSTEM_INSTRUCTION,
-    user: buildSajuUserPrompt(formData),
-    kind: 'saju',
+    payload: {
+      kind: 'saju',
+      profile: {
+        name: formData?.name || '',
+        birthDate: formData?.birthDate || '',
+        birthTime: formData?.birthTime || '',
+        gender: formData?.gender || '',
+        calendarType: formData?.calendarType || 'solar',
+      },
+    },
     failMessage: '사주 해석 요청에 실패했습니다.',
   })
 }
 
-/** 타로 해석 (뽑은 카드 번호를 카드 이름으로 정리해 보냅니다) */
+/** 타로 해석 (뽑은 카드 번호만 보내고, 카드 이름 정리는 서버가 합니다) */
 export async function analyzeTarot(draws, info) {
   return requestReading({
-    system: TAROT_SYSTEM_INSTRUCTION,
-    user: buildTarotUserPrompt(draws, info),
-    kind: 'tarot',
+    payload: {
+      kind: 'tarot',
+      draws: (draws || []).map((d) => ({
+        id: Number(d?.id),
+        reversed: Boolean(d?.reversed),
+      })),
+      name: info?.name || '',
+      concern: info?.concern || '',
+    },
     failMessage: '타로 해석 요청에 실패했습니다.',
   })
 }

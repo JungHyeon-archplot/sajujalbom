@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { streamClaude, readJsonBody } from './server/claudeProxy.js'
+import { buildRequest } from './shared/buildPrompt.js'
 
 function json(res, status, body) {
   res.statusCode = status
@@ -80,9 +81,18 @@ function claudeApiPlugin({ apiKey }) {
         try {
           const payload = await readJsonBody(req)
 
+          const kind = payload?.kind === 'tarot' ? 'tarot' : 'saju'
+          let prompt
+          try {
+            prompt = buildRequest(kind, payload)
+          } catch (err) {
+            json(res, 400, { error: err?.message || '요청 본문이 올바르지 않습니다.' })
+            return
+          }
+
           const result = await streamClaude({
-            system: payload.system,
-            user: payload.user,
+            system: prompt.system,
+            user: prompt.user,
             apiKey,
           })
 

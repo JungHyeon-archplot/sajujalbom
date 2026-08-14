@@ -76,11 +76,10 @@ async function verifySupabaseToken(env, token) {
 }
 
 function corsHeaders() {
-  return {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'Content-Type',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-  }
+  // 이 API는 같은 도메인의 화면에서만 씁니다.
+  // Access-Control-Allow-Origin을 주지 않으면 다른 사이트에서 호출해도
+  // 브라우저가 응답을 읽지 못합니다.
+  return {}
 }
 
 function json(status, body) {
