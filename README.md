@@ -6,6 +6,17 @@
 
 비로그인도 해석을 시작할 수 있고, Google 로그인 후 전체 결과 열람·저장·공유가 열립니다.
 
+## 프로젝트와 구현 경험
+
+장정현의 개인 웹 서비스 프로젝트입니다. React 화면부터 인증·기록 저장·AI API 연결·배포까지 구현했습니다.
+
+- 입력 폼 → AI 해석 → 결과 화면 → 저장·공유로 이어지는 사용자 흐름
+- Supabase Google OAuth, 프로필·해석 기록 데이터, 사용자별 RLS 정책
+- 서버 함수에서 Claude API 호출을 중계하는 구조
+- 페이지·공통 UI·기능별 모듈 분리와 전환 이벤트 분석
+
+[개발자 프로필](https://github.com/JungHyeon-archplot)
+
 ## 기능
 
 - **사주** — 이름·생년월일·시간·성별·양력/음력을 바탕으로 AI 해석
@@ -48,6 +59,8 @@ npm run dev
 
 배포 환경(Netlify 등)에도 동일한 서버 키를 설정해야 해석 API가 동작합니다.
 
+`ANTHROPIC_API_KEY`는 서버 환경에만 넣고 `VITE_` 변수나 브라우저 코드로 전달하지 않습니다. 클라이언트용 Supabase 키와 서버 관리자 키는 구분해야 합니다. 실제 환경 파일은 `.gitignore`로 제외하며, 커밋·PR에는 비밀값 검사를 적용합니다.
+
 ### DB 스키마
 
 `supabase/schema.sql`을 Supabase SQL Editor에 실행하면 사용자 프로필·사주/타로 기록·RLS 정책이 준비됩니다.
@@ -74,6 +87,6 @@ netlify/         # Netlify Functions
 supabase/        # DB 스키마
 ```
 
-## 라이선스
+## 프로젝트 정보
 
-Private — 개인/팀 프로젝트입니다.
+개인 프로젝트의 공개 소스 저장소입니다. 별도의 `LICENSE` 파일은 아직 없습니다.
